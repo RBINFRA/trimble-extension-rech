@@ -23,6 +23,10 @@
   };
 
   let API;
+  let cachedObjects = [];
+  let valueCatalog = {};
+  let dataLoaded = false;
+  const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
   function setStatus(message) {
     selectors.status.textContent = message || "";
@@ -43,14 +47,6 @@
     return { values, dateMin: dateMin || undefined, dateMax: dateMax || undefined };
   }
 
-  function buildPropertyFilters(values) {
-    const props = {};
-    Object.entries(values).forEach(([label, value]) => {
-      props[`${PROPERTY_SET}.${label}`] = value;
-    });
-    return props;
-  }
-
   function getPropertyValue(propertySets, targetName, propName) {
     if (!propertySets) return undefined;
     const pset = propertySets.find((p) => p.name === targetName);
@@ -65,6 +61,89 @@
     if (isNaN(parsed.getTime())) return false;
     if (start && parsed < new Date(start)) return false;
     if (end && parsed > new Date(end)) return false;
+    return true;
+  }
+
+  function equalsIgnoreCase(a, b) {
+    return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+  }
+
+  function buildValueCatalog(objects) {
+    const catalog = {};
+    CRITERIA.forEach((c) => (catalog[c.label] = new Set()));
+
+    objects.forEach((obj) => {
+      CRITERIA.forEach((c) => {
+        const val = getPropertyValue(obj.properties, PROPERTY_SET, c.label);
+        if (val === undefined || val === null) return;
+        const normalized = String(val).trim(); // ignore empty / whitespace values
+        if (normalized) catalog[c.label].add(normalized);
+      });
+    });
+
+    return catalog;
+  }
+
+  function populateDropdowns(catalog) {
+    CRITERIA.forEach((c) => {
+      const select = selectors[c.id];
+      if (!select) return;
+      const currentValue = select.value;
+      select.innerHTML = "";
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "-- Sélectionner --";
+      select.appendChild(empty);
+
+      const values = Array.from(catalog[c.label] || []).sort(collator.compare);
+      values.forEach((val) => {
+        const opt = document.createElement("option");
+        opt.value = val;
+        opt.textContent = val;
+        select.appendChild(opt);
+      });
+
+      if (currentValue && values.includes(currentValue)) {
+        select.value = currentValue;
+      }
+    });
+  }
+
+  function flattenObjects(objects) {
+    return (objects || []).flatMap((m) =>
+      (m.objects || []).map((o) => ({
+        modelId: m.modelId,
+        id: o.id,
+        properties: o.properties,
+      }))
+    );
+  }
+
+  async function ensureDataLoaded() {
+    if (dataLoaded) return;
+    setStatus("Récupération des données disponibles...");
+    const objects = await API.viewer.getObjects();
+    cachedObjects = flattenObjects(objects);
+    valueCatalog = buildValueCatalog(cachedObjects);
+    populateDropdowns(valueCatalog);
+    dataLoaded = true;
+    setStatus("Données chargées. Prêt pour la recherche.");
+  }
+
+  function matchesAllCriteria(obj, criteria) {
+    const matchesProperties = Object.entries(criteria.values).every(([label, value]) => {
+      const propVal = getPropertyValue(obj.properties, PROPERTY_SET, label);
+      if (propVal === undefined || propVal === null) return false;
+      return equalsIgnoreCase(propVal, value);
+    });
+
+    if (!matchesProperties) return false;
+
+    if (criteria.dateMin || criteria.dateMax) {
+      const dateValue = getPropertyValue(obj.properties, PROPERTY_SET, "DATE");
+      return withinDateRange(dateValue, criteria.dateMin, criteria.dateMax);
+    }
+
     return true;
   }
 
@@ -87,7 +166,7 @@
       const count = matches.filter((m) => {
         const val = getPropertyValue(m.properties, PROPERTY_SET, label);
         if (val === undefined || val === null) return false;
-        return String(val).toLowerCase().includes(criteria.values[label].toLowerCase());
+        return equalsIgnoreCase(val, criteria.values[label]);
       }).length;
       addItem(label, count);
     });
@@ -131,36 +210,17 @@
 
   async function runSearch() {
     setError("");
+    await ensureDataLoaded();
     const criteria = readCriteria();
     if (!Object.keys(criteria.values).length && !criteria.dateMin && !criteria.dateMax) {
       setError("Veuillez saisir au moins un critère.");
       return;
     }
 
-    setStatus("Connexion au viewer et récupération des objets...");
+    setStatus("Application du filtrage en cours...");
 
     try {
-      const properties = buildPropertyFilters(criteria.values);
-      const selector = Object.keys(properties).length
-        ? { parameter: { properties } }
-        : undefined;
-
-      const objects = await API.viewer.getObjects(selector);
-      const flattened = (objects || []).flatMap((m) =>
-        (m.objects || []).map((o) => ({
-          modelId: m.modelId,
-          id: o.id,
-          properties: o.properties,
-        }))
-      );
-
-      const filtered = flattened.filter((obj) => {
-        const dateValue = getPropertyValue(obj.properties, PROPERTY_SET, "DATE");
-        const matchesDate = criteria.dateMin || criteria.dateMax
-          ? withinDateRange(dateValue, criteria.dateMin, criteria.dateMax)
-          : true;
-        return matchesDate;
-      });
+      const filtered = cachedObjects.filter((obj) => matchesAllCriteria(obj, criteria));
 
       updateSummary(filtered, criteria);
       await highlightAndZoom(filtered);
@@ -174,7 +234,7 @@
 
   function resetForm() {
     Object.values(selectors).forEach((el) => {
-      if (el instanceof HTMLInputElement) el.value = "";
+      if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = "";
     });
     selectors.summary.innerHTML = "";
     selectors.resultCount.textContent = "Aucun résultat pour le moment.";
@@ -190,7 +250,7 @@
           console.log("Token mis à jour", data);
         }
       }, 30000);
-      setStatus("Connecté. Prêt pour la recherche.");
+      await ensureDataLoaded();
     } catch (err) {
       console.error(err);
       setError("Impossible de se connecter à Trimble Connect. Vérifiez l'extension.");
