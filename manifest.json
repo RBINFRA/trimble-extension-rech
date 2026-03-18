@@ -1,1 +1,7 @@
-
+{
+  "title": "Recherche Mensura",
+  "icon": "",
+  "url": "./index.html",
+  "description": "Extension Trimble Connect pour rechercher et sélectionner les éléments via le PSET - Attributs Mensura",
+  "enabled": true
+}
