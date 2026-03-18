@@ -49,9 +49,9 @@
 
   function getPropertyValue(propertySets, targetName, propName) {
     if (!propertySets) return undefined;
-    const pset = propertySets.find((p) => p.name === targetName);
+    const pset = propertySets.find((p) => equalsIgnoreCase(p.name, targetName));
     if (!pset || !pset.properties) return undefined;
-    const prop = pset.properties.find((p) => p.name === propName);
+    const prop = pset.properties.find((p) => equalsIgnoreCase(p.name, propName));
     return prop ? prop.value : undefined;
   }
 
@@ -65,7 +65,8 @@
   }
 
   function equalsIgnoreCase(a, b) {
-    return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+    if (a === undefined || a === null || b === undefined || b === null) return false;
+    return collator.compare(String(a).trim(), String(b).trim()) === 0;
   }
 
   function buildValueCatalog(objects) {
