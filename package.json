@@ -1,0 +1,24 @@
+{
+  "name": "trimble-extension-rech",
+  "version": "1.0.0",
+  "description": "Extension de recherche BIM Trimble",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RBINFRA/trimble-extension-rech.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/RBINFRA/trimble-extension-rech/issues"
+  },
+  "homepage": "https://github.com/RBINFRA/trimble-extension-rech#readme",
+  "dependencies": {
+    "trimble-connect-workspace-api": "^0.3.34"
+  }
+}

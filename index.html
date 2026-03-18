@@ -1,1 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extension de recherche Mensura</title>
+  <link rel="preconnect" href="https://components.connect.trimble.com" />
+  <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js" defer></script>
+  <script src="app.js" defer></script>
+  <style>
+    :root {
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #1a1a1a;
+      background: #f7f7f7;
+    }
 
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #1c4c96;
+      color: white;
+      padding: 16px 20px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    main {
+      padding: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      margin-bottom: 16px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    button.primary {
+      background: #1c4c96;
+      color: white;
+    }
+
+    button.secondary {
+      background: #e2e8f0;
+      color: #1a1a1a;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .status {
+      font-size: 14px;
+      color: #1c4c96;
+      margin-top: 8px;
+    }
+
+    .results {
+      margin-top: 12px;
+    }
+
+    .results h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+    }
+
+    .summary-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .summary-list li {
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      background: #f9fbff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .badge {
+      background: #1c4c96;
+      color: white;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .error {
+      color: #c53030;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>Recherche Mensura (Trimble Connect)</header>
+  <main>
+    <section class="card">
+      <div class="grid">
+        <div>
+          <label for="nom">Nom</label>
+          <input id="nom" type="text" placeholder="Ex. DALLE 01" />
+        </div>
+        <div>
+          <label for="zone">Zone</label>
+          <input id="zone" type="text" placeholder="Ex. NORD" />
+        </div>
+        <div>
+          <label for="source">Source</label>
+          <input id="source" type="text" placeholder="Ex. IFC" />
+        </div>
+        <div>
+          <label for="entreprise">Entreprise d'exécution</label>
+          <input id="entreprise" type="text" placeholder="Ex. COLAS" />
+        </div>
+        <div>
+          <label for="dateMin">Date (début)</label>
+          <input id="dateMin" type="date" />
+        </div>
+        <div>
+          <label for="dateMax">Date (fin)</label>
+          <input id="dateMax" type="date" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="searchBtn">Lancer la recherche</button>
+        <button class="secondary" id="resetBtn">Réinitialiser</button>
+      </div>
+      <div id="status" class="status"></div>
+      <div id="error" class="error"></div>
+    </section>
+
+    <section class="card results">
+      <h3>Résultats</h3>
+      <div id="resultCount">Aucun résultat pour le moment.</div>
+      <ul id="summary" class="summary-list"></ul>
+    </section>
+  </main>
+</body>
+</html>
