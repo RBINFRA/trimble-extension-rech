@@ -54,7 +54,8 @@
     }
 
     input[type="text"],
-    input[type="date"] {
+    input[type="date"],
+    select {
       width: 100%;
       padding: 10px;
       border: 1px solid #d0d7de;
@@ -149,19 +150,27 @@
       <div class="grid">
         <div>
           <label for="nom">Nom</label>
-          <input id="nom" type="text" placeholder="Ex. DALLE 01" />
+          <select id="nom">
+            <option value="">-- Sélectionner --</option>
+          </select>
         </div>
         <div>
           <label for="zone">Zone</label>
-          <input id="zone" type="text" placeholder="Ex. NORD" />
+          <select id="zone">
+            <option value="">-- Sélectionner --</option>
+          </select>
         </div>
         <div>
           <label for="source">Source</label>
-          <input id="source" type="text" placeholder="Ex. IFC" />
+          <select id="source">
+            <option value="">-- Sélectionner --</option>
+          </select>
         </div>
         <div>
           <label for="entreprise">Entreprise d'exécution</label>
-          <input id="entreprise" type="text" placeholder="Ex. COLAS" />
+          <select id="entreprise">
+            <option value="">-- Sélectionner --</option>
+          </select>
         </div>
         <div>
           <label for="dateMin">Date (début)</label>
