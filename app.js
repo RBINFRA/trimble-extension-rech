@@ -24,7 +24,8 @@
 
   let API;
   let cachedObjects = [];
-  let valueCatalog;
+  let valueCatalog = {};
+  let dataLoaded = false;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
   function setStatus(message) {
@@ -75,7 +76,7 @@
       CRITERIA.forEach((c) => {
         const val = getPropertyValue(obj.properties, PROPERTY_SET, c.label);
         if (val === undefined || val === null) return;
-        const normalized = String(val).trim();
+        const normalized = String(val).trim(); // ignore empty / whitespace values
         if (normalized) catalog[c.label].add(normalized);
       });
     });
@@ -119,12 +120,13 @@
   }
 
   async function ensureDataLoaded() {
-    if (cachedObjects.length && valueCatalog) return;
+    if (dataLoaded) return;
     setStatus("Récupération des données disponibles...");
     const objects = await API.viewer.getObjects();
     cachedObjects = flattenObjects(objects);
     valueCatalog = buildValueCatalog(cachedObjects);
     populateDropdowns(valueCatalog);
+    dataLoaded = true;
     setStatus("Données chargées. Prêt pour la recherche.");
   }
 
