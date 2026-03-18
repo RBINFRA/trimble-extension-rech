@@ -28,6 +28,14 @@
   let dataLoaded = false;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
+  function chunkArray(array, size) {
+    const result = [];
+    for (let i = 0; i < array.length; i += size) {
+      result.push(array.slice(i, i + size));
+    }
+    return result;
+  }
+
   function setStatus(message) {
     selectors.status.textContent = message || "";
   }
@@ -120,15 +128,43 @@
     );
   }
 
+  async function fetchObjectsWithProperties(models) {
+    const result = [];
+    for (const model of models || []) {
+      const ids = (model.objects || []).map((o) => o.id);
+      if (!ids.length) {
+        result.push({ modelId: model.modelId, objects: [] });
+        continue;
+      }
+
+      const batches = chunkArray(ids, 200);
+      const objects = [];
+      for (const batch of batches) {
+        const props = await API.viewer.getObjectProperties(model.modelId, batch);
+        objects.push(...props);
+      }
+
+      result.push({ modelId: model.modelId, objects });
+    }
+    return result;
+  }
+
   async function ensureDataLoaded() {
     if (dataLoaded) return;
     setStatus("Récupération des données disponibles...");
-    const objects = await API.viewer.getObjects();
-    cachedObjects = flattenObjects(objects);
-    valueCatalog = buildValueCatalog(cachedObjects);
-    populateDropdowns(valueCatalog);
-    dataLoaded = true;
-    setStatus("Données chargées. Prêt pour la recherche.");
+    try {
+      const models = await API.viewer.getObjects();
+      const objectsWithProps = await fetchObjectsWithProperties(models);
+      cachedObjects = flattenObjects(objectsWithProps);
+      valueCatalog = buildValueCatalog(cachedObjects);
+      populateDropdowns(valueCatalog);
+      dataLoaded = true;
+      setStatus("Données chargées. Prêt pour la recherche.");
+    } catch (err) {
+      console.error(err);
+      setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
+      setStatus("");
+    }
   }
 
   function matchesAllCriteria(obj, criteria) {
