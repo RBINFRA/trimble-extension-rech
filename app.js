@@ -188,8 +188,8 @@
   }
 
   async function ensureDataLoaded() {
-    let loadIteration = 0;
-    while (loadIteration < MAX_DATA_LOAD_ITERATIONS) {
+    let retryCount = 0;
+    while (retryCount < MAX_DATA_LOAD_ITERATIONS) {
       if (dataLoaded) return;
       if (loadingPromise) {
         await loadingPromise;
@@ -222,8 +222,8 @@
       }
 
       if (dataLoaded) return;
-      loadIteration += 1;
-      // If we reach here, data is still absent (possible reset during loading); retry while iterations remain.
+      retryCount += 1;
+      // If we reach here, data is still absent (e.g., a model unload/reset event cleared caches during load); retry while iterations remain.
     }
   }
 
