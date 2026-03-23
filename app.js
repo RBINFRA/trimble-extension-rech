@@ -7,6 +7,7 @@
     { id: "source", label: "SOURCE" },
     { id: "entreprise", label: "ENTREPRISE D'EXÉCUTION" },
   ];
+  const BATCH_SIZE = 200;
 
   const selectors = {
     element: document.getElementById("element"),
@@ -22,6 +23,9 @@
     error: document.getElementById("error"),
     resultCount: document.getElementById("resultCount"),
     summary: document.getElementById("summary"),
+    progress: document.getElementById("loadingProgress"),
+    progressBar: document.getElementById("loadingProgressBar"),
+    progressText: document.getElementById("loadingProgressText"),
   };
 
   let API;
@@ -70,6 +74,26 @@
 
   function setError(message) {
     selectors.error.textContent = message || "";
+  }
+
+  function resetProgress() {
+    if (!selectors.progress || !selectors.progressBar || !selectors.progressText) return;
+    selectors.progress.classList.add("hidden");
+    selectors.progressText.classList.add("hidden");
+    selectors.progressBar.style.width = "0%";
+    selectors.progressText.textContent = "";
+  }
+
+  function updateProgress(current, total) {
+    if (!selectors.progress || !selectors.progressBar || !selectors.progressText) return;
+    selectors.progress.classList.remove("hidden");
+    selectors.progressText.classList.remove("hidden");
+    const percent = total ? Math.min(100, Math.round((current / total) * 100)) : 0;
+    selectors.progressBar.style.width = `${percent}%`;
+    selectors.progressText.textContent = total
+      ? `${current}/${total} lot(s) de propriétés chargés (${percent}%)`
+      : "Préparation du chargement...";
+    return percent;
   }
 
   function readCriteria() {
@@ -163,11 +187,22 @@
     valueCatalog = {};
     dataLoaded = false;
     loadingPromise = null;
+    resetProgress();
     populateDropdowns(valueCatalog);
   }
 
-  async function fetchObjectsWithProperties(models) {
+  async function fetchObjectsWithProperties(models, onProgress) {
     const result = [];
+    const totalBatches = (models || []).reduce((sum, model) => {
+      const ids = (model.objects || []).map((o) => o.id);
+      return sum + Math.ceil(ids.length / BATCH_SIZE);
+    }, 0);
+    let processedBatches = 0;
+    const report = () => {
+      processedBatches += 1;
+      if (typeof onProgress === "function") onProgress(processedBatches, totalBatches);
+    };
+
     for (const model of models || []) {
       const ids = (model.objects || []).map((o) => o.id);
       if (!ids.length) {
@@ -175,14 +210,18 @@
         continue;
       }
 
-      const batches = chunkArray(ids, 200);
+      const batches = chunkArray(ids, BATCH_SIZE);
       const objects = [];
       for (const batch of batches) {
         const props = await API.viewer.getObjectProperties(model.modelId, batch);
         objects.push(...props);
+        report();
       }
 
       result.push({ modelId: model.modelId, objects });
+    }
+    if (!totalBatches && typeof onProgress === "function") {
+      onProgress(0, 0);
     }
     return result;
   }
@@ -196,14 +235,22 @@
         if (dataLoaded) return;
       } else {
         setStatus("Récupération des données disponibles...");
+        updateProgress(0, 0);
         const inFlight = (async () => {
           const models = await API.viewer.getObjects();
-          const objectsWithProps = await fetchObjectsWithProperties(models);
+          const objectsWithProps = await fetchObjectsWithProperties(models, (current, total) => {
+            const percent = updateProgress(current, total);
+            const status = total
+              ? `Chargement des propriétés (${current}/${total}) - ${percent}%`
+              : "Préparation du chargement...";
+            setStatus(status);
+          });
           cachedObjects = flattenObjects(objectsWithProps);
           valueCatalog = buildValueCatalog(cachedObjects);
           populateDropdowns(valueCatalog);
           dataLoaded = true;
           setStatus("Données chargées. Prêt pour la recherche.");
+          resetProgress();
         })();
         loadingPromise = inFlight;
 
