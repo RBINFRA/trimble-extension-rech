@@ -32,6 +32,10 @@
   const MAX_DATA_LOAD_ATTEMPTS = 3;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
+  function normalizeModelState(state) {
+    return typeof state === "string" ? state.toLowerCase() : undefined;
+  }
+
   function setSelectVisualState(select) {
     if (!select) return;
     if (select.value) {
@@ -184,8 +188,8 @@
   }
 
   async function ensureDataLoaded() {
-    let loadAttempt = 0;
-    while (loadAttempt < MAX_DATA_LOAD_ATTEMPTS) {
+    let loadAttemptCount = 0;
+    while (loadAttemptCount < MAX_DATA_LOAD_ATTEMPTS) {
       if (dataLoaded) return;
       if (loadingPromise) {
         await loadingPromise;
@@ -204,6 +208,7 @@
         setStatus("Données chargées. Prêt pour la recherche.");
       })();
       loadingPromise = inFlight;
+      loadAttemptCount += 1;
 
       try {
         await inFlight;
@@ -219,7 +224,6 @@
       }
 
       if (dataLoaded) return;
-      loadAttempt += 1;
       // If we reach here, data is still absent (possible reset during loading); retry while attempts remain.
     }
   }
@@ -353,7 +357,7 @@
         }
         if (event === "viewer.onModelStateChanged") {
           const state = data?.data?.state;
-          const normalizedState = typeof state === "string" ? state.toLowerCase() : undefined;
+          const normalizedState = normalizeModelState(state);
           if (normalizedState === "unloaded") {
             resetLoadedData();
             setStatus("Modèle déchargé. En attente d'un nouveau chargement...");
