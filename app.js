@@ -152,8 +152,8 @@
     );
   }
 
-  function resetLoadedData() {
-    resetForm();
+  function resetLoadedData(options = { keepForm: false }) {
+    if (!options.keepForm) resetForm();
     cachedObjects = [];
     valueCatalog = {};
     dataLoaded = false;
@@ -183,10 +183,12 @@
   }
 
   async function ensureDataLoaded() {
-    while (true) {
+    let attempts = 3;
+    while (attempts > 0) {
       if (dataLoaded) return;
       if (loadingPromise) {
         await loadingPromise;
+        attempts -= 1;
         continue;
       }
 
@@ -201,14 +203,10 @@
         setStatus("Données chargées. Prêt pour la recherche.");
       })();
 
-      let loadFailed = false;
       try {
         await loadingPromise;
       } catch (err) {
-        loadFailed = true;
-        cachedObjects = [];
-        valueCatalog = {};
-        populateDropdowns(valueCatalog);
+        resetLoadedData({ keepForm: true });
         console.error(err);
         setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
         setStatus("");
@@ -217,8 +215,8 @@
       }
 
       if (dataLoaded) return;
-      if (loadFailed) return;
-      // If we reach here, a reset occurred during loading; loop to try again.
+      attempts -= 1;
+      // If we reach here, a reset occurred during loading or a retry is needed; loop while attempts remain.
     }
   }
 
