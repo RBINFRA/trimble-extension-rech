@@ -7,6 +7,7 @@
     { id: "source", label: "SOURCE" },
     { id: "entreprise", label: "ENTREPRISE D'EXÉCUTION" },
   ];
+  const BATCH_SIZE = 200;
 
   const selectors = {
     element: document.getElementById("element"),
@@ -92,6 +93,7 @@
     selectors.progressText.textContent = total
       ? `${current}/${total} lot(s) de propriétés chargés (${percent}%)`
       : "Préparation du chargement...";
+    return percent;
   }
 
   function readCriteria() {
@@ -193,7 +195,7 @@
     const result = [];
     const totalBatches = (models || []).reduce((sum, model) => {
       const ids = (model.objects || []).map((o) => o.id);
-      return sum + Math.ceil(ids.length / 200);
+      return sum + Math.ceil(ids.length / BATCH_SIZE);
     }, 0);
     let processedBatches = 0;
     const report = () => {
@@ -208,7 +210,7 @@
         continue;
       }
 
-      const batches = chunkArray(ids, 200);
+      const batches = chunkArray(ids, BATCH_SIZE);
       const objects = [];
       for (const batch of batches) {
         const props = await API.viewer.getObjectProperties(model.modelId, batch);
@@ -237,13 +239,11 @@
         const inFlight = (async () => {
           const models = await API.viewer.getObjects();
           const objectsWithProps = await fetchObjectsWithProperties(models, (current, total) => {
-            updateProgress(current, total);
-            if (total) {
-              const percent = Math.min(100, Math.round((current / total) * 100));
-              setStatus(`Chargement des propriétés (${current}/${total}) - ${percent}%`);
-            } else {
-              setStatus("Préparation du chargement...");
-            }
+            const percent = updateProgress(current, total);
+            const status = total
+              ? `Chargement des propriétés (${current}/${total}) - ${percent}%`
+              : "Préparation du chargement...";
+            setStatus(status);
           });
           cachedObjects = flattenObjects(objectsWithProps);
           valueCatalog = buildValueCatalog(cachedObjects);
