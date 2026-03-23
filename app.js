@@ -184,12 +184,11 @@
   }
 
   async function ensureDataLoaded() {
-    let attempts = 0;
-    while (attempts < MAX_DATA_LOAD_ATTEMPTS) {
+    let loadAttempt = 0;
+    while (loadAttempt < MAX_DATA_LOAD_ATTEMPTS) {
       if (dataLoaded) return;
       if (loadingPromise) {
-        const inFlight = loadingPromise;
-        await inFlight;
+        await loadingPromise;
         if (dataLoaded) return;
         continue;
       }
@@ -220,8 +219,8 @@
       }
 
       if (dataLoaded) return;
-      attempts += 1;
-      // If we reach here, a reset occurred during loading or a retry is needed; loop while attempts remain.
+      loadAttempt += 1;
+      // If we reach here, data is still absent (possible reset during loading); retry while attempts remain.
     }
   }
 
