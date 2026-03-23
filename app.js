@@ -34,6 +34,7 @@
   let dataLoaded = false;
   let loadingPromise = null;
   const MAX_DATA_LOAD_ITERATIONS = 3;
+  let progressPercent = 0;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
   function normalizeModelState(state) {
@@ -82,18 +83,18 @@
     selectors.progressText.classList.add("hidden");
     selectors.progressBar.style.width = "0%";
     selectors.progressText.textContent = "";
+    progressPercent = 0;
   }
 
   function updateProgress(current, total) {
     if (!selectors.progress || !selectors.progressBar || !selectors.progressText) return;
     selectors.progress.classList.remove("hidden");
     selectors.progressText.classList.remove("hidden");
-    const percent = total ? Math.min(100, Math.round((current / total) * 100)) : 0;
-    selectors.progressBar.style.width = `${percent}%`;
-    selectors.progressText.textContent = total
-      ? `${current}/${total} lot(s) de propriétés chargés (${percent}%)`
-      : "Préparation du chargement...";
-    return percent;
+    const computed = total ? Math.min(100, Math.round((current / total) * 100)) : progressPercent;
+    progressPercent = Math.max(progressPercent, computed);
+    selectors.progressBar.style.width = `${progressPercent}%`;
+    selectors.progressText.textContent = `Chargement des données... ${progressPercent}%`;
+    return progressPercent;
   }
 
   function readCriteria() {
@@ -241,8 +242,8 @@
           const objectsWithProps = await fetchObjectsWithProperties(models, (current, total) => {
             const percent = updateProgress(current, total);
             const status = total
-              ? `Chargement des propriétés (${current}/${total}) - ${percent}%`
-              : "Préparation du chargement...";
+              ? `Chargement des données... ${percent}%`
+              : "Chargement des données...";
             setStatus(status);
           });
           cachedObjects = flattenObjects(objectsWithProps);
