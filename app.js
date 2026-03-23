@@ -194,6 +194,7 @@
       if (loadingPromise) {
         await loadingPromise;
         if (dataLoaded) return;
+        loadAttemptCount += 1;
         continue;
       }
 
@@ -224,6 +225,7 @@
       }
 
       if (dataLoaded) return;
+      loadAttemptCount += 1;
       // If we reach here, data is still absent (possible reset during loading); retry while attempts remain.
     }
   }
