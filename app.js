@@ -250,7 +250,6 @@
           populateDropdowns(valueCatalog);
           dataLoaded = true;
           setStatus("Données chargées. Prêt pour la recherche.");
-          updateProgress(1, 1);
           resetProgress();
         })();
         loadingPromise = inFlight;
