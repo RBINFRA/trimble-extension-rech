@@ -28,6 +28,7 @@
   let cachedObjects = [];
   let valueCatalog = {};
   let dataLoaded = false;
+  let loadingPromise = null;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
   function setSelectVisualState(select) {
@@ -151,6 +152,15 @@
     );
   }
 
+  function resetLoadedData() {
+    resetForm();
+    cachedObjects = [];
+    valueCatalog = {};
+    dataLoaded = false;
+    loadingPromise = null;
+    populateDropdowns(valueCatalog);
+  }
+
   async function fetchObjectsWithProperties(models) {
     const result = [];
     for (const model of models || []) {
@@ -174,8 +184,12 @@
 
   async function ensureDataLoaded() {
     if (dataLoaded) return;
+    if (loadingPromise) {
+      await loadingPromise;
+      if (dataLoaded) return;
+    }
     setStatus("Récupération des données disponibles...");
-    try {
+    loadingPromise = (async () => {
       const models = await API.viewer.getObjects();
       const objectsWithProps = await fetchObjectsWithProperties(models);
       cachedObjects = flattenObjects(objectsWithProps);
@@ -183,10 +197,16 @@
       populateDropdowns(valueCatalog);
       dataLoaded = true;
       setStatus("Données chargées. Prêt pour la recherche.");
+    })();
+
+    try {
+      await loadingPromise;
     } catch (err) {
       console.error(err);
       setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
       setStatus("");
+    } finally {
+      loadingPromise = null;
     }
   }
 
@@ -306,9 +326,36 @@
   async function init() {
     setStatus("Connexion à Trimble Connect...");
     try {
-      API = await TrimbleConnectWorkspace.connect(window.parent, (event, data) => {
+      API = await TrimbleConnectWorkspace.connect(window.parent, async (event, data) => {
         if (event === "extension.accessToken") {
           console.log("Token mis à jour", data);
+          return;
+        }
+        if (event === "embed.pageLoaded") {
+          resetLoadedData();
+          setStatus("Maquette rechargée. Mise à jour des filtres...");
+          await ensureDataLoaded();
+          return;
+        }
+        if (event === "viewer.onModelStateChanged") {
+          const state = data?.data?.state;
+          const normalizedState = typeof state === "string" ? state.toLowerCase() : undefined;
+          if (normalizedState === "unloaded") {
+            resetLoadedData();
+            setStatus("Modèle déchargé. En attente d'un nouveau chargement...");
+            return;
+          }
+          if (normalizedState === "loaded") {
+            resetLoadedData();
+            setStatus("Nouveau modèle chargé. Mise à jour des filtres...");
+            await ensureDataLoaded();
+            return;
+          }
+        }
+        if (event === "viewer.onModelReset") {
+          resetLoadedData();
+          setStatus("Modèle réinitialisé. Mise à jour des filtres...");
+          await ensureDataLoaded();
         }
       }, 30000);
       await ensureDataLoaded();
