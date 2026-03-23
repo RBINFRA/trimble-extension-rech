@@ -22,6 +22,9 @@
     error: document.getElementById("error"),
     resultCount: document.getElementById("resultCount"),
     summary: document.getElementById("summary"),
+    progress: document.getElementById("loadingProgress"),
+    progressBar: document.getElementById("loadingProgressBar"),
+    progressText: document.getElementById("loadingProgressText"),
   };
 
   let API;
@@ -70,6 +73,25 @@
 
   function setError(message) {
     selectors.error.textContent = message || "";
+  }
+
+  function resetProgress() {
+    if (!selectors.progress || !selectors.progressBar || !selectors.progressText) return;
+    selectors.progress.classList.add("hidden");
+    selectors.progressText.classList.add("hidden");
+    selectors.progressBar.style.width = "0%";
+    selectors.progressText.textContent = "";
+  }
+
+  function updateProgress(current, total) {
+    if (!selectors.progress || !selectors.progressBar || !selectors.progressText) return;
+    selectors.progress.classList.remove("hidden");
+    selectors.progressText.classList.remove("hidden");
+    const percent = total ? Math.min(100, Math.round((current / total) * 100)) : 0;
+    selectors.progressBar.style.width = `${percent}%`;
+    selectors.progressText.textContent = total
+      ? `${current}/${total} lot(s) de propriétés chargés (${percent}%)`
+      : "Préparation du chargement...";
   }
 
   function readCriteria() {
@@ -163,11 +185,22 @@
     valueCatalog = {};
     dataLoaded = false;
     loadingPromise = null;
+    resetProgress();
     populateDropdowns(valueCatalog);
   }
 
-  async function fetchObjectsWithProperties(models) {
+  async function fetchObjectsWithProperties(models, onProgress) {
     const result = [];
+    const totalBatches = (models || []).reduce((sum, model) => {
+      const ids = (model.objects || []).map((o) => o.id);
+      return sum + Math.ceil(ids.length / 200);
+    }, 0);
+    let processedBatches = 0;
+    const report = () => {
+      processedBatches += 1;
+      if (typeof onProgress === "function") onProgress(processedBatches, totalBatches);
+    };
+
     for (const model of models || []) {
       const ids = (model.objects || []).map((o) => o.id);
       if (!ids.length) {
@@ -180,9 +213,13 @@
       for (const batch of batches) {
         const props = await API.viewer.getObjectProperties(model.modelId, batch);
         objects.push(...props);
+        report();
       }
 
       result.push({ modelId: model.modelId, objects });
+    }
+    if (!totalBatches && typeof onProgress === "function") {
+      onProgress(0, 0);
     }
     return result;
   }
@@ -196,14 +233,25 @@
         if (dataLoaded) return;
       } else {
         setStatus("Récupération des données disponibles...");
+        updateProgress(0, 0);
         const inFlight = (async () => {
           const models = await API.viewer.getObjects();
-          const objectsWithProps = await fetchObjectsWithProperties(models);
+          const objectsWithProps = await fetchObjectsWithProperties(models, (current, total) => {
+            updateProgress(current, total);
+            if (total) {
+              const percent = Math.min(100, Math.round((current / total) * 100));
+              setStatus(`Chargement des propriétés (${current}/${total}) - ${percent}%`);
+            } else {
+              setStatus("Préparation du chargement...");
+            }
+          });
           cachedObjects = flattenObjects(objectsWithProps);
           valueCatalog = buildValueCatalog(cachedObjects);
           populateDropdowns(valueCatalog);
           dataLoaded = true;
           setStatus("Données chargées. Prêt pour la recherche.");
+          updateProgress(1, 1);
+          resetProgress();
         })();
         loadingPromise = inFlight;
 

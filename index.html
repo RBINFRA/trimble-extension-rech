@@ -107,6 +107,32 @@
       margin-top: 8px;
     }
 
+    .loading-progress {
+      width: 100%;
+      background: #e5e7eb;
+      border-radius: 6px;
+      height: 10px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .loading-progress .progress-bar {
+      height: 100%;
+      width: 0;
+      background: #1c4c96;
+      transition: width 0.2s ease;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: #4b5563;
+      margin-top: 4px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
     .results {
       margin-top: 12px;
     }
@@ -199,6 +225,10 @@
         <button class="secondary" id="resetBtn">Réinitialiser</button>
       </div>
       <div id="status" class="status"></div>
+      <div id="loadingProgress" class="loading-progress hidden">
+        <div id="loadingProgressBar" class="progress-bar"></div>
+      </div>
+      <div id="loadingProgressText" class="progress-text hidden"></div>
       <div id="error" class="error"></div>
     </section>
 
