@@ -63,6 +63,13 @@
       font-size: 14px;
       box-sizing: border-box;
     }
+    select.placeholder {
+      color: #6b7280;
+    }
+    select.selected {
+      color: #1c4c96;
+      font-weight: 600;
+    }
 
     .actions {
       display: flex;
@@ -149,14 +156,20 @@
     <section class="card">
       <div class="grid">
         <div>
-          <label for="nom">Nom</label>
-          <select id="nom">
+          <label for="element">Élément</label>
+          <select id="element">
             <option value="">-- Sélectionner --</option>
           </select>
         </div>
         <div>
-          <label for="zone">Zone</label>
-          <select id="zone">
+          <label for="localisation">Localisation</label>
+          <select id="localisation">
+            <option value="">-- Sélectionner --</option>
+          </select>
+        </div>
+        <div>
+          <label for="nomProjet">Nom projet</label>
+          <select id="nomProjet">
             <option value="">-- Sélectionner --</option>
           </select>
         </div>
