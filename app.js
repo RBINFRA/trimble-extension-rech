@@ -183,30 +183,42 @@
   }
 
   async function ensureDataLoaded() {
-    if (dataLoaded) return;
-    if (loadingPromise) {
-      await loadingPromise;
+    while (true) {
       if (dataLoaded) return;
-    }
-    setStatus("Récupération des données disponibles...");
-    loadingPromise = (async () => {
-      const models = await API.viewer.getObjects();
-      const objectsWithProps = await fetchObjectsWithProperties(models);
-      cachedObjects = flattenObjects(objectsWithProps);
-      valueCatalog = buildValueCatalog(cachedObjects);
-      populateDropdowns(valueCatalog);
-      dataLoaded = true;
-      setStatus("Données chargées. Prêt pour la recherche.");
-    })();
+      if (loadingPromise) {
+        await loadingPromise;
+        continue;
+      }
 
-    try {
-      await loadingPromise;
-    } catch (err) {
-      console.error(err);
-      setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
-      setStatus("");
-    } finally {
-      loadingPromise = null;
+      setStatus("Récupération des données disponibles...");
+      loadingPromise = (async () => {
+        const models = await API.viewer.getObjects();
+        const objectsWithProps = await fetchObjectsWithProperties(models);
+        cachedObjects = flattenObjects(objectsWithProps);
+        valueCatalog = buildValueCatalog(cachedObjects);
+        populateDropdowns(valueCatalog);
+        dataLoaded = true;
+        setStatus("Données chargées. Prêt pour la recherche.");
+      })();
+
+      let loadFailed = false;
+      try {
+        await loadingPromise;
+      } catch (err) {
+        loadFailed = true;
+        cachedObjects = [];
+        valueCatalog = {};
+        populateDropdowns(valueCatalog);
+        console.error(err);
+        setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
+        setStatus("");
+      } finally {
+        loadingPromise = null;
+      }
+
+      if (dataLoaded) return;
+      if (loadFailed) return;
+      // If we reach here, a reset occurred during loading; loop to try again.
     }
   }
 
