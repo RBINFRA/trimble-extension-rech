@@ -1,15 +1,17 @@
 (function () {
   const PROPERTY_SET = "PSET - Attributs Mensura";
   const CRITERIA = [
-    { id: "nom", label: "NOM" },
-    { id: "zone", label: "ZONE" },
+    { id: "element", label: "ELEMENTS" },
+    { id: "localisation", label: "LOCALISATION" },
+    { id: "nomProjet", label: "NOM PROJET" },
     { id: "source", label: "SOURCE" },
     { id: "entreprise", label: "ENTREPRISE D'EXÉCUTION" },
   ];
 
   const selectors = {
-    nom: document.getElementById("nom"),
-    zone: document.getElementById("zone"),
+    element: document.getElementById("element"),
+    localisation: document.getElementById("localisation"),
+    nomProjet: document.getElementById("nomProjet"),
     source: document.getElementById("source"),
     entreprise: document.getElementById("entreprise"),
     dateMin: document.getElementById("dateMin"),
@@ -27,6 +29,26 @@
   let valueCatalog = {};
   let dataLoaded = false;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
+
+  function setSelectVisualState(select) {
+    if (!select) return;
+    if (select.value) {
+      select.classList.add("selected");
+      select.classList.remove("placeholder");
+    } else {
+      select.classList.add("placeholder");
+      select.classList.remove("selected");
+    }
+  }
+
+  function bindSelectStateUpdates() {
+    CRITERIA.forEach((c) => {
+      const select = selectors[c.id];
+      if (!select) return;
+      select.addEventListener("change", () => setSelectVisualState(select));
+      setSelectVisualState(select);
+    });
+  }
 
   function chunkArray(array, size) {
     const result = [];
@@ -115,6 +137,7 @@
       if (currentValue && values.includes(currentValue)) {
         select.value = currentValue;
       }
+      setSelectVisualState(select);
     });
   }
 
@@ -277,6 +300,7 @@
     selectors.resultCount.textContent = "Aucun résultat pour le moment.";
     setStatus("");
     setError("");
+    CRITERIA.forEach((c) => setSelectVisualState(selectors[c.id]));
   }
 
   async function init() {
@@ -297,6 +321,7 @@
 
   selectors.searchBtn.addEventListener("click", runSearch);
   selectors.resetBtn.addEventListener("click", resetForm);
+  bindSelectStateUpdates();
 
   window.addEventListener("DOMContentLoaded", init);
 })();
