@@ -29,6 +29,7 @@
   let valueCatalog = {};
   let dataLoaded = false;
   let loadingPromise = null;
+  const MAX_DATA_LOAD_ATTEMPTS = 3;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
   function setSelectVisualState(select) {
@@ -183,17 +184,18 @@
   }
 
   async function ensureDataLoaded() {
-    let attempts = 3;
-    while (attempts > 0) {
+    let attempts = 0;
+    while (attempts < MAX_DATA_LOAD_ATTEMPTS) {
       if (dataLoaded) return;
       if (loadingPromise) {
-        await loadingPromise;
-        attempts -= 1;
+        const inFlight = loadingPromise;
+        await inFlight;
+        if (dataLoaded) return;
         continue;
       }
 
       setStatus("Récupération des données disponibles...");
-      loadingPromise = (async () => {
+      const inFlight = (async () => {
         const models = await API.viewer.getObjects();
         const objectsWithProps = await fetchObjectsWithProperties(models);
         cachedObjects = flattenObjects(objectsWithProps);
@@ -202,20 +204,23 @@
         dataLoaded = true;
         setStatus("Données chargées. Prêt pour la recherche.");
       })();
+      loadingPromise = inFlight;
 
       try {
-        await loadingPromise;
+        await inFlight;
       } catch (err) {
         resetLoadedData({ keepForm: true });
         console.error(err);
         setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
         setStatus("");
       } finally {
-        loadingPromise = null;
+        if (loadingPromise === inFlight) {
+          loadingPromise = null;
+        }
       }
 
       if (dataLoaded) return;
-      attempts -= 1;
+      attempts += 1;
       // If we reach here, a reset occurred during loading or a retry is needed; loop while attempts remain.
     }
   }
