@@ -29,7 +29,7 @@
   let valueCatalog = {};
   let dataLoaded = false;
   let loadingPromise = null;
-  const MAX_DATA_LOAD_ATTEMPTS = 3;
+  const MAX_DATA_LOAD_ITERATIONS = 3;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
 
   function normalizeModelState(state) {
@@ -188,45 +188,42 @@
   }
 
   async function ensureDataLoaded() {
-    let loadAttemptCount = 0;
-    while (loadAttemptCount < MAX_DATA_LOAD_ATTEMPTS) {
+    let loadIteration = 0;
+    while (loadIteration < MAX_DATA_LOAD_ITERATIONS) {
       if (dataLoaded) return;
       if (loadingPromise) {
         await loadingPromise;
         if (dataLoaded) return;
-        loadAttemptCount += 1;
-        continue;
-      }
+      } else {
+        setStatus("Récupération des données disponibles...");
+        const inFlight = (async () => {
+          const models = await API.viewer.getObjects();
+          const objectsWithProps = await fetchObjectsWithProperties(models);
+          cachedObjects = flattenObjects(objectsWithProps);
+          valueCatalog = buildValueCatalog(cachedObjects);
+          populateDropdowns(valueCatalog);
+          dataLoaded = true;
+          setStatus("Données chargées. Prêt pour la recherche.");
+        })();
+        loadingPromise = inFlight;
 
-      setStatus("Récupération des données disponibles...");
-      const inFlight = (async () => {
-        const models = await API.viewer.getObjects();
-        const objectsWithProps = await fetchObjectsWithProperties(models);
-        cachedObjects = flattenObjects(objectsWithProps);
-        valueCatalog = buildValueCatalog(cachedObjects);
-        populateDropdowns(valueCatalog);
-        dataLoaded = true;
-        setStatus("Données chargées. Prêt pour la recherche.");
-      })();
-      loadingPromise = inFlight;
-      loadAttemptCount += 1;
-
-      try {
-        await inFlight;
-      } catch (err) {
-        resetLoadedData({ keepForm: true });
-        console.error(err);
-        setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
-        setStatus("");
-      } finally {
-        if (loadingPromise === inFlight) {
-          loadingPromise = null;
+        try {
+          await inFlight;
+        } catch (err) {
+          resetLoadedData({ keepForm: true });
+          console.error(err);
+          setError("Impossible de récupérer les propriétés des objets. Vérifiez le chargement du modèle.");
+          setStatus("");
+        } finally {
+          if (loadingPromise === inFlight) {
+            loadingPromise = null;
+          }
         }
       }
 
       if (dataLoaded) return;
-      loadAttemptCount += 1;
-      // If we reach here, data is still absent (possible reset during loading); retry while attempts remain.
+      loadIteration += 1;
+      // If we reach here, data is still absent (possible reset during loading); retry while iterations remain.
     }
   }
 
