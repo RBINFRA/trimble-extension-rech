@@ -177,10 +177,16 @@
   </style>
 </head>
 <body>
-  <header>Recherche Mensura (Trimble Connect)</header>
+  <header>Recherche d'objet 3D par attributs</header>
   <main>
     <section class="card">
       <div class="grid">
+        <div>
+          <label for="nomProjet">Nom projet</label>
+          <select id="nomProjet">
+            <option value="">-- Sélectionner --</option>
+          </select>
+        </div>
         <div>
           <label for="element">Élément</label>
           <select id="element">
@@ -193,12 +199,7 @@
             <option value="">-- Sélectionner --</option>
           </select>
         </div>
-        <div>
-          <label for="nomProjet">Nom projet</label>
-          <select id="nomProjet">
-            <option value="">-- Sélectionner --</option>
-          </select>
-        </div>
+        
         <div>
           <label for="source">Source</label>
           <select id="source">
