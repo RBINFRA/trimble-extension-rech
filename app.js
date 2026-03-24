@@ -26,6 +26,7 @@
     progress: document.getElementById("loadingProgress"),
     progressBar: document.getElementById("loadingProgressBar"),
     progressText: document.getElementById("loadingProgressText"),
+    loadingSpinner: document.getElementById("loadingSpinner"),
   };
 
   let API;
@@ -84,12 +85,18 @@
     selectors.progressBar.style.width = "0%";
     selectors.progressText.textContent = "";
     progressPercent = 0;
+    if (selectors.loadingSpinner) {
+      selectors.loadingSpinner.classList.add("hidden");
+    }
   }
 
   function updateProgress(current, total) {
     if (!selectors.progress || !selectors.progressBar || !selectors.progressText) return;
     selectors.progress.classList.remove("hidden");
     selectors.progressText.classList.remove("hidden");
+    if (selectors.loadingSpinner) {
+      selectors.loadingSpinner.classList.remove("hidden");
+    }
     const computed = total ? Math.min(100, Math.round((current / total) * 100)) : progressPercent;
     progressPercent = Math.max(progressPercent, computed);
     selectors.progressBar.style.width = `${progressPercent}%`;
