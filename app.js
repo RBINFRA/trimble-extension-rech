@@ -390,7 +390,7 @@
         const li = document.createElement("li");
         const countLabel = formatObjectCountLabel(item.count);
         const metricText = group.meta.metric
-          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)}${group.meta.metric.unit ? ` ${group.meta.metric.unit}` : ""}`
+          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)} ${group.meta.metric.unit}`.trim()
           : "";
         li.innerHTML = `<span class="summary-item-text">${countLabel} - ${item.element}${metricText}</span>`;
         selectors.summary.appendChild(li);
