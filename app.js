@@ -37,7 +37,9 @@
   const MAX_DATA_LOAD_ITERATIONS = 3;
   let progressPercent = 0;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
-  const TYPE_PROPS = ["TYPE D'OBJET 3D", "TYPE D’OBJET 3D"];
+  const TYPE_PROP_STRAIGHT = "TYPE D'OBJET 3D";
+  const TYPE_PROP_CURLY = "TYPE D\u2019OBJET 3D";
+  const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_CURLY];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
   const SURFACE_PROP = "SURFACE";
   const LENGTH_PROP = "LONGUEUR";
@@ -364,7 +366,7 @@
       return;
     }
 
-    selectors.resultCount.textContent = `${matches.length} objet(s) sélectionné(s).`;
+    selectors.resultCount.textContent = `${formatObjectCount(matches.length)} sélectionné(s).`;
 
     const aggregates = aggregateByType(matches);
     if (!aggregates.length) {
