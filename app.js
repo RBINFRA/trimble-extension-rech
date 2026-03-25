@@ -170,7 +170,7 @@
   }
 
   function formatObjectCountLabel(count) {
-    return `${count} objet${count === 1 ? "" : "s"}`;
+    return `${count} Objet${count === 1 ? "" : "s"}`;
   }
 
   function formatSelectionText(count) {
