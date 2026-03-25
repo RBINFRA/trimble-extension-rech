@@ -37,15 +37,13 @@
   const MAX_DATA_LOAD_ITERATIONS = 3;
   let progressPercent = 0;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
-  const TYPE_PROP = "TYPE D'OBJET 3D";
-  const TYPE_PROP_ALT = "TYPE D’OBJET 3D";
-  const ELEMENT_PROP = "ELEMENT";
-  const ELEMENT_PROP_ALT = "ELEMENTS";
+  const TYPE_PROPS = ["TYPE D'OBJET 3D", "TYPE D’OBJET 3D"];
+  const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
   const SURFACE_PROP = "SURFACE";
   const LENGTH_PROP = "LONGUEUR";
   const TYPE_GROUPS = [
     { key: "SURFACIQUE", label: "TYPE D’OBJET 3D : SURFACIQUE", metric: { propNames: [SURFACE_PROP], label: "Surface totale" } },
-    { key: "LINEAIRE", label: "TYPE D’OBJET 3D : LINEAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale" } },
+    { key: "LINEAIRE", label: "TYPE D’OBJET 3D : LINÉAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale" } },
     { key: "PONCTUEL", label: "TYPE D’OBJET 3D : PONCTUEL", metric: null },
   ];
 
@@ -175,11 +173,11 @@
   function aggregateByType(matches) {
     const map = new Map();
     matches.forEach((obj) => {
-      const typeValue = getPropertyValueWithFallback(obj.properties, TYPE_PROP, TYPE_PROP_ALT);
+      const typeValue = getPropertyValueWithFallback(obj.properties, ...TYPE_PROPS);
       const group = TYPE_GROUPS.find((g) => equalsIgnoreCase(typeValue, g.key));
       if (!group) return;
       const elementValue =
-        getPropertyValueWithFallback(obj.properties, ELEMENT_PROP, ELEMENT_PROP_ALT) || "Élément non spécifié";
+        getPropertyValueWithFallback(obj.properties, ...ELEMENT_PROPS) || "Élément non spécifié";
       const existingGroup = map.get(group.key) || { meta: group, items: new Map() };
       const existingItem = existingGroup.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
       existingItem.count += 1;
