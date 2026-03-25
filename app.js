@@ -176,7 +176,7 @@
 
   function formatSelectionText(count) {
     const adjective = count === 1 ? "trouvé" : "trouvés";
-    return `${formatObjectCountLabel(count)} ${adjective}.`;
+    return `${formatObjectCountLabel(count)} ${adjective}`;
   }
 
   function aggregateByType(matches) {
@@ -379,7 +379,7 @@
       return;
     }
 
-    selectors.resultCount.textContent = formatSelectionText(matches.length);
+    selectors.resultCount.textContent = `${formatSelectionText(matches.length)}.`;
 
     const { groups, unknownCount } = aggregateByType(matches);
     if (!groups.length && !unknownCount) {
@@ -394,7 +394,7 @@
         const li = document.createElement("li");
         const countLabel = formatObjectCountLabel(item.count);
         const metricText = group.meta.metric
-          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)} ${group.meta.metric.unit}`.trim()
+          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)} ${group.meta.metric.unit}`
           : "";
         li.innerHTML = `<span class="summary-item-text">${countLabel} - ${item.element}${metricText}</span>`;
         selectors.summary.appendChild(li);
