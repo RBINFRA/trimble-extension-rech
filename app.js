@@ -42,6 +42,7 @@
   const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
   const ELEMENT_FALLBACK = "Élément non spécifié";
+  const UNKNOWN_TYPE_LABEL = "INCONNUS";
   const SURFACE_PROP = "SURFACE";
   const LENGTH_PROP = "LONGUEUR";
   const TYPE_GROUPS = [
@@ -402,7 +403,7 @@
 
     if (unknownCount > 0) {
       const li = document.createElement("li");
-      li.textContent = `${formatObjectCountLabel(unknownCount)} - INCONNUS`;
+      li.textContent = `${formatObjectCountLabel(unknownCount)} - ${UNKNOWN_TYPE_LABEL}`;
       selectors.summary.appendChild(li);
     }
   }
