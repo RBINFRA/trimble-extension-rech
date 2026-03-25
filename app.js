@@ -44,8 +44,8 @@
   const SURFACE_PROP = "SURFACE";
   const LENGTH_PROP = "LONGUEUR";
   const TYPE_GROUPS = [
-    { key: "SURFACIQUE", label: "TYPE D’OBJET 3D : SURFACIQUE", metric: { propNames: [SURFACE_PROP], label: "Surface totale" } },
-    { key: "LINÉAIRE", label: "TYPE D’OBJET 3D : LINÉAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale" } },
+    { key: "SURFACIQUE", label: "TYPE D’OBJET 3D : SURFACIQUE", metric: { propNames: [SURFACE_PROP], label: "Surface totale", unit: "m²" } },
+    { key: "LINÉAIRE", label: "TYPE D’OBJET 3D : LINÉAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale", unit: "ml" } },
     { key: "PONCTUEL", label: "TYPE D’OBJET 3D : PONCTUEL", metric: null },
   ];
 
@@ -376,17 +376,12 @@
       return;
     }
 
-    aggregates.forEach((group, index) => {
-      const title = document.createElement("li");
-      title.className = "summary-section-title";
-      title.textContent = `${index + 1} - ${group.meta.label}`;
-      selectors.summary.appendChild(title);
-
+    aggregates.forEach((group) => {
       group.items.forEach((item) => {
         const li = document.createElement("li");
         const countLabel = formatObjectCount(item.count);
         const metricText = group.meta.metric
-          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)}`
+          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)}${group.meta.metric.unit ? ` ${group.meta.metric.unit}` : ""}`
           : "";
         li.innerHTML = `<span class="summary-item-text">${countLabel} - ${item.element}${metricText}</span>`;
         selectors.summary.appendChild(li);
