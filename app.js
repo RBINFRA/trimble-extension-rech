@@ -37,6 +37,19 @@
   const MAX_DATA_LOAD_ITERATIONS = 3;
   let progressPercent = 0;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
+  const TYPE_PROP_STRAIGHT = "TYPE D'OBJET 3D";
+  const TYPE_PROP_UNICODE_APOSTROPHE = "TYPE D\u2019OBJET 3D";
+  const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
+  const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
+  const ELEMENT_FALLBACK = "Élément non spécifié";
+  const UNKNOWN_TYPE_LABEL = "INCONNUS";
+  const SURFACE_PROP = "SURFACE";
+  const LENGTH_PROP = "LONGUEUR";
+  const TYPE_GROUPS = [
+    { key: "SURFACIQUE", label: "TYPE D’OBJET 3D : SURFACIQUE", metric: { propNames: [SURFACE_PROP], label: "Surface totale", unit: "m²" } },
+    { key: "LINÉAIRE", label: "TYPE D’OBJET 3D : LINÉAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale", unit: "ml" } },
+    { key: "PONCTUEL", label: "TYPE D’OBJET 3D : PONCTUEL", metric: null },
+  ];
 
   function normalizeModelState(state) {
     return typeof state === "string" ? state.toLowerCase() : undefined;
@@ -135,6 +148,66 @@
   function equalsIgnoreCase(a, b) {
     if (a === undefined || a === null || b === undefined || b === null) return false;
     return collator.compare(String(a).trim(), String(b).trim()) === 0;
+  }
+
+  function getPropertyValueWithFallback(propertySets, ...names) {
+    for (const name of names) {
+      const value = getPropertyValue(propertySets, PROPERTY_SET, name);
+      if (value !== undefined && value !== null) return value;
+    }
+    return undefined;
+  }
+
+  function toNumericValue(value) {
+    if (typeof value === "number") return value;
+    if (value === undefined || value === null) return 0;
+    const cleaned = String(value).replace(/\s/g, "").replace(",", ".");
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function formatNumber(value) {
+    return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(value);
+  }
+
+  function formatObjectCountLabel(count) {
+    return `${count} objet${count === 1 ? "" : "s"}`;
+  }
+
+  function formatSelectionText(count) {
+    const adjective = count === 1 ? "trouvé" : "trouvés";
+    return `${formatObjectCountLabel(count)} ${adjective}`;
+  }
+
+  function aggregateByType(matches) {
+    const map = new Map();
+    let unknownCount = 0;
+    matches.forEach((obj) => {
+      const typeValue = getPropertyValueWithFallback(obj.properties, ...TYPE_PROPS);
+      const group = TYPE_GROUPS.find((g) => equalsIgnoreCase(typeValue, g.key));
+      if (!group) {
+        unknownCount += 1;
+        return;
+      }
+      const elementValue =
+        getPropertyValueWithFallback(obj.properties, ...ELEMENT_PROPS) || ELEMENT_FALLBACK;
+      const existingGroup = map.get(group.key) || { meta: group, items: new Map() };
+      const existingItem = existingGroup.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
+      existingItem.count += 1;
+      if (group.metric) {
+        const metricValue = getPropertyValueWithFallback(obj.properties, ...(group.metric.propNames || []));
+        existingItem.total += toNumericValue(metricValue);
+      }
+      existingGroup.items.set(elementValue, existingItem);
+      map.set(group.key, existingGroup);
+    });
+
+    const groups = TYPE_GROUPS.filter((g) => map.has(g.key)).map((g) => {
+      const group = map.get(g.key);
+      return { meta: group.meta, items: Array.from(group.items.values()) };
+    });
+
+    return { groups, unknownCount };
   }
 
   function buildValueCatalog(objects) {
@@ -299,41 +372,39 @@
     return true;
   }
 
-  function updateSummary(matches, criteria) {
+  function updateSummary(matches) {
     selectors.summary.innerHTML = "";
     if (!matches.length) {
       selectors.resultCount.textContent = "Aucun élément trouvé.";
       return;
     }
 
-    selectors.resultCount.textContent = `${matches.length} élément(s) trouvé(s).`;
+    selectors.resultCount.textContent = `${formatSelectionText(matches.length)}.`;
 
-    const addItem = (label, count) => {
+    const { groups, unknownCount } = aggregateByType(matches);
+    if (!groups.length && !unknownCount) {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${label}</span><span class="badge">${count}</span>`;
+      li.textContent = "Aucun regroupement disponible (TYPE D’OBJET 3D manquant).";
       selectors.summary.appendChild(li);
-    };
+      return;
+    }
 
-    Object.entries(criteria.values).forEach(([label]) => {
-      const count = matches.filter((m) => {
-        const val = getPropertyValue(m.properties, PROPERTY_SET, label);
-        if (val === undefined || val === null) return false;
-        return equalsIgnoreCase(val, criteria.values[label]);
-      }).length;
-      addItem(label, count);
+    groups.forEach((group) => {
+      group.items.forEach((item) => {
+        const li = document.createElement("li");
+        const countLabel = formatObjectCountLabel(item.count);
+        const metricText = group.meta.metric
+          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)} ${group.meta.metric.unit}`
+          : "";
+        li.innerHTML = `<span class="summary-item-text">${countLabel} - ${item.element}${metricText}</span>`;
+        selectors.summary.appendChild(li);
+      });
     });
 
-    if (criteria.dateMin || criteria.dateMax) {
-      const count = matches.filter((m) => {
-        const dateVal = getPropertyValue(m.properties, PROPERTY_SET, "DATE");
-        return withinDateRange(dateVal, criteria.dateMin, criteria.dateMax);
-      }).length;
-      const label = criteria.dateMin && criteria.dateMax
-        ? `DATE entre ${criteria.dateMin} et ${criteria.dateMax}`
-        : criteria.dateMin
-          ? `DATE après ${criteria.dateMin}`
-          : `DATE avant ${criteria.dateMax}`;
-      addItem(label, count);
+    if (unknownCount > 0) {
+      const li = document.createElement("li");
+      li.textContent = `${formatObjectCountLabel(unknownCount)} - ${UNKNOWN_TYPE_LABEL}`;
+      selectors.summary.appendChild(li);
     }
   }
 
@@ -374,7 +445,7 @@
     try {
       const filtered = cachedObjects.filter((obj) => matchesAllCriteria(obj, criteria));
 
-      updateSummary(filtered, criteria);
+      updateSummary(filtered);
       await highlightAndZoom(filtered);
       setStatus("Recherche terminée. Les éléments sont sélectionnés et zoomés.");
     } catch (err) {
