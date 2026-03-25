@@ -173,6 +173,11 @@
     return `${count} objet${count === 1 ? "" : "s"}`;
   }
 
+  function formatSelectionText(count) {
+    const adjective = count === 1 ? "sélectionné" : "sélectionnés";
+    return `${formatObjectCountLabel(count)} ${adjective}.`;
+  }
+
   function aggregateByType(matches) {
     const map = new Map();
     let unknownCount = 0;
@@ -373,9 +378,7 @@
       return;
     }
 
-    selectors.resultCount.textContent = `${formatObjectCountLabel(matches.length)} ${
-      matches.length === 1 ? "sélectionné" : "sélectionnés"
-    }.`;
+    selectors.resultCount.textContent = formatSelectionText(matches.length);
 
     const { groups, unknownCount } = aggregateByType(matches);
     if (!groups.length && !unknownCount) {
