@@ -175,7 +175,7 @@
   }
 
   function formatSelectionText(count) {
-    const adjective = count === 1 ? "sélectionné" : "sélectionnés";
+    const adjective = count === 1 ? "trouvé" : "trouvés";
     return `${formatObjectCountLabel(count)} ${adjective}.`;
   }
 
