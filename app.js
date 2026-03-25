@@ -174,10 +174,14 @@
 
   function aggregateByType(matches) {
     const map = new Map();
+    let unknownCount = 0;
     matches.forEach((obj) => {
       const typeValue = getPropertyValueWithFallback(obj.properties, ...TYPE_PROPS);
       const group = TYPE_GROUPS.find((g) => equalsIgnoreCase(typeValue, g.key));
-      if (!group) return;
+      if (!group) {
+        unknownCount += 1;
+        return;
+      }
       const elementValue =
         getPropertyValueWithFallback(obj.properties, ...ELEMENT_PROPS) || "Élément non spécifié";
       const existingGroup = map.get(group.key) || { meta: group, items: new Map() };
@@ -191,10 +195,12 @@
       map.set(group.key, existingGroup);
     });
 
-    return TYPE_GROUPS.filter((g) => map.has(g.key)).map((g) => {
+    const groups = TYPE_GROUPS.filter((g) => map.has(g.key)).map((g) => {
       const group = map.get(g.key);
       return { meta: group.meta, items: Array.from(group.items.values()) };
     });
+
+    return { groups, unknownCount };
   }
 
   function buildValueCatalog(objects) {
@@ -368,15 +374,15 @@
 
     selectors.resultCount.textContent = `${formatObjectCount(matches.length)} sélectionné(s).`;
 
-    const aggregates = aggregateByType(matches);
-    if (!aggregates.length) {
+    const { groups, unknownCount } = aggregateByType(matches);
+    if (!groups.length && !unknownCount) {
       const li = document.createElement("li");
       li.textContent = "Aucun regroupement disponible (TYPE D'OBJET 3D manquant).";
       selectors.summary.appendChild(li);
       return;
     }
 
-    aggregates.forEach((group) => {
+    groups.forEach((group) => {
       group.items.forEach((item) => {
         const li = document.createElement("li");
         const countLabel = formatObjectCount(item.count);
@@ -387,6 +393,12 @@
         selectors.summary.appendChild(li);
       });
     });
+
+    if (unknownCount > 0) {
+      const li = document.createElement("li");
+      li.textContent = `${formatObjectCount(unknownCount)} - INCONNUS`;
+      selectors.summary.appendChild(li);
+    }
   }
 
   function buildSelectionPayload(matches) {
