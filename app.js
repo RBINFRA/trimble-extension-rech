@@ -169,7 +169,7 @@
     return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(value);
   }
 
-  function formatObjectCount(count) {
+  function formatObjectCountLabel(count) {
     return `${count} objet${count === 1 ? "" : "s"}`;
   }
 
@@ -373,12 +373,14 @@
       return;
     }
 
-    selectors.resultCount.textContent = `${formatObjectCount(matches.length)} sélectionné(s).`;
+    selectors.resultCount.textContent = `${formatObjectCountLabel(matches.length)} ${
+      matches.length === 1 ? "sélectionné" : "sélectionnés"
+    }.`;
 
     const { groups, unknownCount } = aggregateByType(matches);
     if (!groups.length && !unknownCount) {
       const li = document.createElement("li");
-      li.textContent = "Aucun regroupement disponible (TYPE D'OBJET 3D manquant).";
+      li.textContent = "Aucun regroupement disponible (TYPE D’OBJET 3D manquant).";
       selectors.summary.appendChild(li);
       return;
     }
@@ -386,7 +388,7 @@
     groups.forEach((group) => {
       group.items.forEach((item) => {
         const li = document.createElement("li");
-        const countLabel = formatObjectCount(item.count);
+        const countLabel = formatObjectCountLabel(item.count);
         const metricText = group.meta.metric
           ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)}${group.meta.metric.unit ? ` ${group.meta.metric.unit}` : ""}`
           : "";
@@ -397,7 +399,7 @@
 
     if (unknownCount > 0) {
       const li = document.createElement("li");
-      li.textContent = `${formatObjectCount(unknownCount)} - INCONNUS`;
+      li.textContent = `${formatObjectCountLabel(unknownCount)} - INCONNUS`;
       selectors.summary.appendChild(li);
     }
   }
