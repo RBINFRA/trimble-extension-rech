@@ -41,6 +41,7 @@
   const TYPE_PROP_UNICODE_APOSTROPHE = "TYPE D\u2019OBJET 3D";
   const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
+  const ELEMENT_FALLBACK = "Élément non spécifié";
   const SURFACE_PROP = "SURFACE";
   const LENGTH_PROP = "LONGUEUR";
   const TYPE_GROUPS = [
@@ -169,7 +170,7 @@
   }
 
   function formatObjectCount(count) {
-    return `${count} Objet${count === 1 ? "" : "s"}`;
+    return `${count} objet${count === 1 ? "" : "s"}`;
   }
 
   function aggregateByType(matches) {
@@ -183,7 +184,7 @@
         return;
       }
       const elementValue =
-        getPropertyValueWithFallback(obj.properties, ...ELEMENT_PROPS) || "Élément non spécifié";
+        getPropertyValueWithFallback(obj.properties, ...ELEMENT_PROPS) || ELEMENT_FALLBACK;
       const existingGroup = map.get(group.key) || { meta: group, items: new Map() };
       const existingItem = existingGroup.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
       existingItem.count += 1;
