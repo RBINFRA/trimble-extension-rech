@@ -169,7 +169,7 @@
   }
 
   function formatObjectCount(count) {
-    return `${count} Objet${count > 1 ? "s" : ""}`;
+    return `${count} Objet${count !== 1 ? "s" : ""}`;
   }
 
   function aggregateByType(matches) {
