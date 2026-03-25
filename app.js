@@ -38,14 +38,14 @@
   let progressPercent = 0;
   const collator = new Intl.Collator("fr", { sensitivity: "base" });
   const TYPE_PROP_STRAIGHT = "TYPE D'OBJET 3D";
-  const TYPE_PROP_CURLY = "TYPE D\u2019OBJET 3D";
-  const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_CURLY];
+  const TYPE_PROP_UNICODE_APOSTROPHE = "TYPE D\u2019OBJET 3D";
+  const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
   const SURFACE_PROP = "SURFACE";
   const LENGTH_PROP = "LONGUEUR";
   const TYPE_GROUPS = [
     { key: "SURFACIQUE", label: "TYPE D’OBJET 3D : SURFACIQUE", metric: { propNames: [SURFACE_PROP], label: "Surface totale" } },
-    { key: "LINEAIRE", label: "TYPE D’OBJET 3D : LINÉAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale" } },
+    { key: "LINÉAIRE", label: "TYPE D’OBJET 3D : LINÉAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale" } },
     { key: "PONCTUEL", label: "TYPE D’OBJET 3D : PONCTUEL", metric: null },
   ];
 
