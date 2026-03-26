@@ -207,9 +207,11 @@
       const grouped = map.get(group.key) || { meta: group, items: new Map() };
 
       if (group.key === "SURFACIQUE") {
-        const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
+        const existingItem =
+          grouped.items.get(elementValue) || { element: elementValue, count: 0, total: 0, objects: [] };
         existingItem.count += 1;
         existingItem.total += toNumericValue(getSurfaceHorizontaleValue(obj.properties));
+        existingItem.objects.push(obj);
         grouped.items.set(elementValue, existingItem);
         map.set(group.key, grouped);
         return;
@@ -218,18 +220,24 @@
       if (group.key === "LINÉAIRE") {
         const typeDetail = getPropertyValueWithFallback(obj.properties, LINE_TYPE_PROP) || LINE_TYPE_FALLBACK;
         const linearKey = buildLinearKey(elementValue, typeDetail);
-        const existingItem = grouped.items.get(linearKey) || { element: elementValue, type: typeDetail, total: 0 };
+        const existingItem =
+          grouped.items.get(linearKey) || { element: elementValue, type: typeDetail, total: 0, objects: [] };
         const metricValue = getPropertyValueWithFallback(obj.properties, LENGTH_PROP);
         existingItem.total += toNumericValue(metricValue);
+        existingItem.objects.push(obj);
         grouped.items.set(linearKey, existingItem);
         map.set(group.key, grouped);
         return;
       }
 
       if (group.key === "PONCTUEL") {
-        const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0 };
+        const typeDetail = getPropertyValueWithFallback(obj.properties, LINE_TYPE_PROP) || LINE_TYPE_FALLBACK;
+        const punctualKey = buildLinearKey(elementValue, typeDetail);
+        const existingItem =
+          grouped.items.get(punctualKey) || { element: elementValue, type: typeDetail, count: 0, objects: [] };
         existingItem.count += 1;
-        grouped.items.set(elementValue, existingItem);
+        existingItem.objects.push(obj);
+        grouped.items.set(punctualKey, existingItem);
         map.set(group.key, grouped);
       }
     });
@@ -456,11 +464,31 @@
       selectors.summary.appendChild(titleLi);
     };
 
+    const createSummaryItem = (text, objects = []) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="summary-item-text">${text}</span>`;
+      if (objects.length) {
+        li.classList.add("summary-clickable");
+        li.addEventListener("click", async () => {
+          setError("");
+          setStatus("Zoom sur la sélection...");
+          try {
+            await highlightAndZoom(objects);
+            setStatus("Éléments sélectionnés et zoomés.");
+          } catch (err) {
+            console.error(err);
+            setError("Impossible de zoomer sur ces éléments.");
+            setStatus("");
+          }
+        });
+      }
+      return li;
+    };
+
     groups.forEach((group) => {
       addSectionTitle(group.meta.label);
 
       group.items.forEach((item) => {
-        const li = document.createElement("li");
         let text = "";
 
         if (group.meta.key === "SURFACIQUE") {
@@ -471,17 +499,17 @@
           const unit = group.meta.metric?.unit ? ` ${group.meta.metric.unit}` : "";
           text = `${item.element} ${typeLabel} ${EN_DASH} Longueur totale : ${formatNumber(item.total)}${unit}`;
         } else if (group.meta.key === "PONCTUEL") {
-          text = `${formatObjectCountLabel(item.count)} ${EN_DASH} ${item.element}`;
+          const typeLabel = item.type ? ` - ${item.type}` : "";
+          text = `${formatObjectCountLabel(item.count)} ${EN_DASH} ${item.element}${typeLabel}`;
         }
 
-        li.innerHTML = `<span class="summary-item-text">${text}</span>`;
+        const li = createSummaryItem(text, item.objects || []);
         selectors.summary.appendChild(li);
       });
     });
 
     if (unknownCount > 0) {
-      const li = document.createElement("li");
-      li.textContent = `${formatObjectCountLabel(unknownCount)} - ${UNKNOWN_TYPE_LABEL}`;
+      const li = createSummaryItem(`${formatObjectCountLabel(unknownCount)} - ${UNKNOWN_TYPE_LABEL}`);
       selectors.summary.appendChild(li);
     }
   }
