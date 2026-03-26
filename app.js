@@ -42,11 +42,14 @@
   const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
   const LINE_TYPE_PROP = "TYPE";
+  const LINE_TYPE_FALLBACK = "Type non spécifié";
+  const LINEAR_KEY_SEPARATOR = "::";
   const ELEMENT_FALLBACK = "Élément non spécifié";
   const UNKNOWN_TYPE_LABEL = "INCONNUS";
   const SURFACE_PROP = "SURFACE";
   const SURFACE_HORIZONTAL_PROP = "Surface Horizontale";
   const LENGTH_PROP = "LONGUEUR";
+  const EN_DASH = "\u2013";
   const TYPE_GROUPS = [
     { key: "SURFACIQUE", label: "TYPE D’OBJET 3D : SURFACIQUE", metric: { propNames: [SURFACE_PROP], label: "Surface totale", unit: "m²" } },
     { key: "LINÉAIRE", label: "TYPE D’OBJET 3D : LINÉAIRE", metric: { propNames: [LENGTH_PROP], label: "Longueur totale", unit: "ml" } },
@@ -173,7 +176,7 @@
   }
 
   function formatObjectCountLabel(count) {
-    return `${count} Objet${count === 1 ? "" : "s"}`;
+    return `${count} objet${count === 1 ? "" : "s"}`;
   }
 
   function formatSelectionText(count) {
@@ -181,16 +184,16 @@
     return `${formatObjectCountLabel(count)} ${adjective}`;
   }
 
+  function buildLinearKey(element, type) {
+    return `${element}${LINEAR_KEY_SEPARATOR}${type}`;
+  }
+
+  function isPropertySetWithoutName(pset) {
+    return (!pset?.name || !String(pset.name).trim()) && Array.isArray(pset?.properties);
+  }
+
   function aggregateByType(matches) {
-    const map = new Map(
-      TYPE_GROUPS.map((group) => [
-        group.key,
-        {
-          meta: group,
-          items: new Map(),
-        },
-      ])
-    );
+    const map = new Map();
     let unknownCount = 0;
     matches.forEach((obj) => {
       const typeValue = getPropertyValueWithFallback(obj.properties, ...TYPE_PROPS);
@@ -201,23 +204,25 @@
       }
       const elementValue =
         getPropertyValueWithFallback(obj.properties, ...ELEMENT_PROPS) || ELEMENT_FALLBACK;
-      const grouped = map.get(group.key);
+      const grouped = map.get(group.key) || { meta: group, items: new Map() };
 
       if (group.key === "SURFACIQUE") {
         const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
         existingItem.count += 1;
         existingItem.total += toNumericValue(getSurfaceHorizontaleValue(obj.properties));
         grouped.items.set(elementValue, existingItem);
+        map.set(group.key, grouped);
         return;
       }
 
       if (group.key === "LINÉAIRE") {
-        const typeDetail = getPropertyValue(obj.properties, PROPERTY_SET, LINE_TYPE_PROP) || "Type non spécifié";
-        const key = `${elementValue}__${typeDetail}`;
-        const existingItem = grouped.items.get(key) || { element: elementValue, type: typeDetail, total: 0 };
+        const typeDetail = getPropertyValueWithFallback(obj.properties, LINE_TYPE_PROP) || LINE_TYPE_FALLBACK;
+        const linearKey = buildLinearKey(elementValue, typeDetail);
+        const existingItem = grouped.items.get(linearKey) || { element: elementValue, type: typeDetail, total: 0 };
         const metricValue = getPropertyValueWithFallback(obj.properties, LENGTH_PROP);
         existingItem.total += toNumericValue(metricValue);
-        grouped.items.set(key, existingItem);
+        grouped.items.set(linearKey, existingItem);
+        map.set(group.key, grouped);
         return;
       }
 
@@ -225,6 +230,7 @@
         const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0 };
         existingItem.count += 1;
         grouped.items.set(elementValue, existingItem);
+        map.set(group.key, grouped);
       }
     });
 
@@ -232,10 +238,9 @@
       .map((g) => {
         const group = map.get(g.key);
         const items = Array.from(group.items.values());
-        if (!items.length) return undefined;
         return { meta: group.meta, items };
       })
-      .filter(Boolean);
+      .filter((group) => group.items.length > 0);
 
     return { groups, unknownCount };
   }
@@ -243,16 +248,25 @@
   function getSurfaceHorizontaleValue(propertySets) {
     if (!propertySets) return undefined;
 
-    const emptyPset = propertySets.find((pset) => equalsIgnoreCase(pset?.name, "") && Array.isArray(pset.properties));
-    const emptySurface = emptyPset?.properties?.find((p) => equalsIgnoreCase(p.name, SURFACE_HORIZONTAL_PROP));
-    if (emptySurface) return emptySurface.value;
-
+    // Prefer values from unnamed property sets (Mensura exports with an empty name) when available.
+    let fallbackSurfaceValue;
     for (const pset of propertySets) {
       if (!pset?.properties) continue;
       const prop = pset.properties.find((p) => equalsIgnoreCase(p.name, SURFACE_HORIZONTAL_PROP));
-      if (prop) return prop.value;
+      if (!prop) continue;
+      if (isPropertySetWithoutName(pset)) {
+        return prop.value;
+      }
+      if (fallbackSurfaceValue === undefined) {
+        fallbackSurfaceValue = prop.value;
+      }
     }
 
+    if (fallbackSurfaceValue !== undefined) {
+      return fallbackSurfaceValue;
+    }
+
+    // Fallback to Mensura SURFACE when no dedicated horizontal surface is present
     return getPropertyValueWithFallback(propertySets, SURFACE_PROP);
   }
 
@@ -450,12 +464,14 @@
         let text = "";
 
         if (group.meta.key === "SURFACIQUE") {
-          text = `${formatObjectCountLabel(item.count)} - ${item.element} \u2013 Surface totale : ${formatNumber(item.total)}`;
+          const unit = group.meta.metric?.unit ? ` ${group.meta.metric.unit}` : "";
+          text = `${formatObjectCountLabel(item.count)} ${EN_DASH} ${item.element} ${EN_DASH} Surface totale : ${formatNumber(item.total)}${unit}`;
         } else if (group.meta.key === "LINÉAIRE") {
-          const typeLabel = item.type ? ` \u2013 ${item.type}` : "";
-          text = `${item.element}${typeLabel} - Longueur totale : ${formatNumber(item.total)}`;
+          const typeLabel = `${EN_DASH} ${item.type}`;
+          const unit = group.meta.metric?.unit ? ` ${group.meta.metric.unit}` : "";
+          text = `${item.element} ${typeLabel} ${EN_DASH} Longueur totale : ${formatNumber(item.total)}${unit}`;
         } else if (group.meta.key === "PONCTUEL") {
-          text = `${formatObjectCountLabel(item.count)} - ${item.element}`;
+          text = `${formatObjectCountLabel(item.count)} ${EN_DASH} ${item.element}`;
         }
 
         li.innerHTML = `<span class="summary-item-text">${text}</span>`;
