@@ -9,65 +9,110 @@
   <script src="app.js" defer></script>
   <style>
     :root {
+      --primary: #529898;
+      --primary-dark: #447c7c;
+      --primary-light: #e6f1f1;
+      --primary-rgb: 82, 152, 152;
+      --primary-shadow-15: rgba(82, 152, 152, 0.15);
+      --primary-shadow-35: rgba(82, 152, 152, 0.35);
+      --border: #d3dde3;
+      --surface: #f1f4f7;
+      --text: #1f2a3a;
+      --muted: #6b7785;
+      --input-bg: #eef2f4;
+      --input-text: #2e3a47;
+      --input-focus-bg: #f8fbfb;
+      --summary-bg: #f6fafb;
+      --summary-text: #243345;
+      --summary-hover-bg: #e7f0f0;
       font-family: "Segoe UI", Arial, sans-serif;
-      color: #1a1a1a;
-      background: #f7f7f7;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
       margin: 0;
       padding: 0;
+      background: var(--surface);
     }
 
     header {
-      background: #1c4c96;
+      background: var(--primary);
       color: white;
-      padding: 16px 20px;
+      padding: 16px 22px;
       font-size: 18px;
       font-weight: 600;
+      letter-spacing: 0.2px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .app-layout {
+      padding: 18px 18px 24px;
+      max-width: 1180px;
+      margin: 0 auto;
     }
 
     main {
-      padding: 20px;
-      max-width: 1100px;
-      margin: 0 auto;
+      min-width: 0;
     }
 
     .card {
       background: white;
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 18px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
     }
 
     .grid {
       display: grid;
       gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     }
 
     label {
       display: block;
       font-weight: 600;
       margin-bottom: 6px;
+      color: var(--text);
+      font-size: 14px;
     }
 
     input[type="text"],
     input[type="date"],
     select {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #d0d7de;
-      border-radius: 6px;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       font-size: 14px;
-      box-sizing: border-box;
+      background: var(--input-bg);
+      color: var(--input-text);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
+
+    input[type="text"]:focus,
+    input[type="date"]:focus,
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-shadow-15);
+      background: var(--input-focus-bg);
+    }
+
     select.placeholder {
-      color: #6b7280;
+      color: var(--muted);
     }
     select.selected {
-      color: #1c4c96;
+      color: var(--primary-dark);
       font-weight: 600;
     }
 
@@ -75,26 +120,33 @@
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      margin-top: 10px;
+      margin-top: 12px;
     }
 
     button {
       border: none;
-      border-radius: 6px;
-      padding: 10px 14px;
+      border-radius: 8px;
+      padding: 11px 16px;
       font-size: 14px;
       cursor: pointer;
-      transition: background 0.2s ease, transform 0.1s ease;
+      transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+      font-weight: 600;
     }
 
     button.primary {
-      background: #1c4c96;
+      background: var(--primary);
       color: white;
+      box-shadow: 0 2px 6px var(--primary-shadow-35);
+    }
+
+    button.primary:hover {
+      background: var(--primary-dark);
     }
 
     button.secondary {
-      background: #e2e8f0;
-      color: #1a1a1a;
+      background: var(--input-bg);
+      color: var(--input-text);
+      border: 1px solid var(--border);
     }
 
     button:active {
@@ -103,23 +155,24 @@
 
     .status {
       font-size: 14px;
-      color: #1c4c96;
+      color: var(--primary);
       margin-top: 8px;
     }
 
     .loading-progress {
       width: 100%;
       background: #e5e7eb;
-      border-radius: 6px;
+      border-radius: 8px;
       height: 10px;
       overflow: hidden;
       margin-top: 6px;
+      border: 1px solid var(--border);
     }
 
     .loading-progress .progress-bar {
       height: 100%;
       width: 0;
-      background: #1c4c96;
+      background: var(--primary);
       transition: width 0.2s ease;
     }
 
@@ -147,33 +200,45 @@
     .results h3 {
       margin: 0 0 8px 0;
       font-size: 16px;
+      color: var(--primary);
+    }
+
+    #resultCount {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: var(--muted);
     }
 
     .summary-list {
       list-style: none;
       padding: 0;
       margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .summary-list li {
-      padding: 8px 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      margin-bottom: 6px;
-      background: #f9fbff;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--summary-bg);
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
+      color: var(--summary-text);
     }
 
     .summary-section-title {
-      background: #eaf1ff;
-      color: #1c4c96;
+      background: var(--primary-light);
+      color: var(--primary-dark);
       font-weight: 700;
       text-transform: uppercase;
       justify-content: flex-start;
       gap: 8px;
+      letter-spacing: 0.2px;
+      border-color: var(--primary);
     }
 
     .summary-clickable {
@@ -182,8 +247,8 @@
     }
 
     .summary-clickable:hover {
-      background: #eaf1ff;
-      border-color: #d0ddff;
+      background: var(--summary-hover-bg);
+      border-color: var(--primary);
     }
 
     .summary-item-text {
@@ -192,7 +257,7 @@
     }
 
     .badge {
-      background: #1c4c96;
+      background: var(--primary);
       color: white;
       border-radius: 999px;
       padding: 2px 10px;
@@ -209,67 +274,69 @@
 </head>
 <body>
   <header>Recherche d'objet 3D par attributs</header>
-  <main>
-    <section class="card">
-      <div class="grid">
-        <div>
-          <label for="nomProjet">Nom projet</label>
-          <select id="nomProjet">
-            <option value="">-- Sélectionner --</option>
-          </select>
-        </div>
-        <div>
-          <label for="element">Élément</label>
-          <select id="element">
-            <option value="">-- Sélectionner --</option>
-          </select>
-        </div>
-        <div>
-          <label for="localisation">Localisation</label>
-          <select id="localisation">
-            <option value="">-- Sélectionner --</option>
-          </select>
-        </div>
-        
-        <div>
-          <label for="source">Source</label>
-          <select id="source">
-            <option value="">-- Sélectionner --</option>
-          </select>
-        </div>
-        <div>
-          <label for="entreprise">Entreprise d'exécution</label>
-          <select id="entreprise">
-            <option value="">-- Sélectionner --</option>
-          </select>
-        </div>
-        <div>
-          <label for="dateMin">Date (début)</label>
-          <input id="dateMin" type="date" />
-        </div>
-        <div>
-          <label for="dateMax">Date (fin)</label>
-          <input id="dateMax" type="date" />
-        </div>
-      </div>
-      <div class="actions">
-        <button class="primary" id="searchBtn">Lancer la recherche</button>
-        <button class="secondary" id="resetBtn">Réinitialiser</button>
-      </div>
-      <div id="status" class="status"></div>
-      <img id="loadingSpinner" class="loading-gif hidden" src="GIF_INFRA.gif" alt="Chargement en cours" />
-      <div id="loadingProgress" class="loading-progress hidden">
-        <div id="loadingProgressBar" class="progress-bar"></div>
-      </div>
-      <div id="loadingProgressText" class="progress-text hidden"></div>
-      <div id="error" class="error"></div>
-    </section>
+  <div class="app-layout">
+    <main>
+      <section class="card">
+        <div class="grid">
+          <div>
+            <label for="nomProjet">Nom projet</label>
+            <select id="nomProjet">
+              <option value="">-- Sélectionner --</option>
+            </select>
+          </div>
+          <div>
+            <label for="element">Élément</label>
+            <select id="element">
+              <option value="">-- Sélectionner --</option>
+            </select>
+          </div>
+          <div>
+            <label for="localisation">Localisation</label>
+            <select id="localisation">
+              <option value="">-- Sélectionner --</option>
+            </select>
+          </div>
 
-    <section class="card results">
-      <h3>Résultats</h3>
-      <div id="resultCount">Aucun résultat pour le moment.</div>
-      <ul id="summary" class="summary-list"></ul>
-    </section>
-  </main>
+          <div>
+            <label for="source">Source</label>
+            <select id="source">
+              <option value="">-- Sélectionner --</option>
+            </select>
+          </div>
+          <div>
+            <label for="entreprise">Entreprise d'exécution</label>
+            <select id="entreprise">
+              <option value="">-- Sélectionner --</option>
+            </select>
+          </div>
+          <div>
+            <label for="dateMin">Date (début)</label>
+            <input id="dateMin" type="date" />
+          </div>
+          <div>
+            <label for="dateMax">Date (fin)</label>
+            <input id="dateMax" type="date" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="searchBtn">Lancer la recherche</button>
+          <button class="secondary" id="resetBtn">Réinitialiser</button>
+        </div>
+        <div id="status" class="status"></div>
+        <img id="loadingSpinner" class="loading-gif hidden" src="GIF_INFRA.gif" alt="Chargement en cours" />
+        <div id="loadingProgress" class="loading-progress hidden">
+          <div id="loadingProgressBar" class="progress-bar"></div>
+        </div>
+        <div id="loadingProgressText" class="progress-text hidden"></div>
+        <div id="error" class="error"></div>
+      </section>
+
+      <section class="card results">
+        <h3>Résultats</h3>
+        <div id="resultCount">Aucun résultat pour le moment.</div>
+        <ul id="summary" class="summary-list"></ul>
+      </section>
+    </main>
+  </div>
 </body>
 </html>
