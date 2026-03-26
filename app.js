@@ -41,8 +41,8 @@
   const TYPE_PROP_UNICODE_APOSTROPHE = "TYPE D\u2019OBJET 3D";
   const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
-  const LINE_TYPE_PROP = "TYPE";
-  const LINE_TYPE_FALLBACK = "Type non spécifié";
+  const OBJECT_TYPE_PROP = "TYPE";
+  const TYPE_FALLBACK = "Type non spécifié";
   const LINEAR_KEY_SEPARATOR = "::";
   const ELEMENT_FALLBACK = "Élément non spécifié";
   const UNKNOWN_TYPE_LABEL = "INCONNUS";
@@ -184,7 +184,7 @@
     return `${formatObjectCountLabel(count)} ${adjective}`;
   }
 
-  function buildLinearKey(element, type) {
+  function buildElementTypeKey(element, type) {
     return `${element}${LINEAR_KEY_SEPARATOR}${type}`;
   }
 
@@ -207,29 +207,48 @@
       const grouped = map.get(group.key) || { meta: group, items: new Map() };
 
       if (group.key === "SURFACIQUE") {
-        const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
-        existingItem.count += 1;
-        existingItem.total += toNumericValue(getSurfaceHorizontaleValue(obj.properties));
-        grouped.items.set(elementValue, existingItem);
+        const existingItem =
+          grouped.items.get(elementValue) || { element: elementValue, count: 0, total: 0, objects: [] };
+        const updatedItem = {
+          element: elementValue,
+          count: existingItem.count + 1,
+          total: existingItem.total + toNumericValue(getSurfaceHorizontaleValue(obj.properties)),
+          objects: [...existingItem.objects, obj],
+        };
+        grouped.items.set(elementValue, updatedItem);
         map.set(group.key, grouped);
         return;
       }
 
       if (group.key === "LINÉAIRE") {
-        const typeDetail = getPropertyValueWithFallback(obj.properties, LINE_TYPE_PROP) || LINE_TYPE_FALLBACK;
-        const linearKey = buildLinearKey(elementValue, typeDetail);
-        const existingItem = grouped.items.get(linearKey) || { element: elementValue, type: typeDetail, total: 0 };
+        const typeDetail = getPropertyValueWithFallback(obj.properties, OBJECT_TYPE_PROP) || TYPE_FALLBACK;
+        const linearKey = buildElementTypeKey(elementValue, typeDetail);
+        const existingItem =
+          grouped.items.get(linearKey) || { element: elementValue, type: typeDetail, total: 0, objects: [] };
         const metricValue = getPropertyValueWithFallback(obj.properties, LENGTH_PROP);
-        existingItem.total += toNumericValue(metricValue);
-        grouped.items.set(linearKey, existingItem);
+        const updatedItem = {
+          element: elementValue,
+          type: typeDetail,
+          total: existingItem.total + toNumericValue(metricValue),
+          objects: [...existingItem.objects, obj],
+        };
+        grouped.items.set(linearKey, updatedItem);
         map.set(group.key, grouped);
         return;
       }
 
       if (group.key === "PONCTUEL") {
-        const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0 };
-        existingItem.count += 1;
-        grouped.items.set(elementValue, existingItem);
+        const typeDetail = getPropertyValueWithFallback(obj.properties, OBJECT_TYPE_PROP) || TYPE_FALLBACK;
+        const punctualKey = buildElementTypeKey(elementValue, typeDetail);
+        const existingItem =
+          grouped.items.get(punctualKey) || { element: elementValue, type: typeDetail, count: 0, objects: [] };
+        const updatedItem = {
+          element: elementValue,
+          type: typeDetail,
+          count: existingItem.count + 1,
+          objects: [...existingItem.objects, obj],
+        };
+        grouped.items.set(punctualKey, updatedItem);
         map.set(group.key, grouped);
       }
     });
@@ -456,11 +475,32 @@
       selectors.summary.appendChild(titleLi);
     };
 
+    const createSummaryItem = (text, objects = []) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="summary-item-text">${text}</span>`;
+      if (objects.length) {
+        li.classList.add("summary-clickable");
+        li.addEventListener("click", async () => {
+          setError("");
+          setStatus("Zoom sur la sélection...");
+          try {
+            await highlightAndZoom(objects);
+            setStatus("Éléments sélectionnés et zoomés.");
+          } catch (err) {
+            console.error(err);
+            const detail = err?.message ? ` Détails : ${err.message}` : "";
+            setError(`Impossible de zoomer sur ces éléments. Vérifiez la connexion au viewer.${detail}`);
+            setStatus("");
+          }
+        });
+      }
+      return li;
+    };
+
     groups.forEach((group) => {
       addSectionTitle(group.meta.label);
 
       group.items.forEach((item) => {
-        const li = document.createElement("li");
         let text = "";
 
         if (group.meta.key === "SURFACIQUE") {
@@ -471,17 +511,17 @@
           const unit = group.meta.metric?.unit ? ` ${group.meta.metric.unit}` : "";
           text = `${item.element} ${typeLabel} ${EN_DASH} Longueur totale : ${formatNumber(item.total)}${unit}`;
         } else if (group.meta.key === "PONCTUEL") {
-          text = `${formatObjectCountLabel(item.count)} ${EN_DASH} ${item.element}`;
+          const typeLabel = item.type ? ` - ${item.type}` : "";
+          text = `${formatObjectCountLabel(item.count)} ${EN_DASH} ${item.element}${typeLabel}`;
         }
 
-        li.innerHTML = `<span class="summary-item-text">${text}</span>`;
+        const li = createSummaryItem(text, item.objects || []);
         selectors.summary.appendChild(li);
       });
     });
 
     if (unknownCount > 0) {
-      const li = document.createElement("li");
-      li.textContent = `${formatObjectCountLabel(unknownCount)} - ${UNKNOWN_TYPE_LABEL}`;
+      const li = createSummaryItem(`${formatObjectCountLabel(unknownCount)} - ${UNKNOWN_TYPE_LABEL}`);
       selectors.summary.appendChild(li);
     }
   }
