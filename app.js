@@ -41,9 +41,11 @@
   const TYPE_PROP_UNICODE_APOSTROPHE = "TYPE D\u2019OBJET 3D";
   const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
+  const LINE_TYPE_PROP = "TYPE";
   const ELEMENT_FALLBACK = "Élément non spécifié";
   const UNKNOWN_TYPE_LABEL = "INCONNUS";
   const SURFACE_PROP = "SURFACE";
+  const SURFACE_HORIZONTAL_PROP = "Surface Horizontale";
   const LENGTH_PROP = "LONGUEUR";
   const TYPE_GROUPS = [
     { key: "SURFACIQUE", label: "TYPE D’OBJET 3D : SURFACIQUE", metric: { propNames: [SURFACE_PROP], label: "Surface totale", unit: "m²" } },
@@ -171,7 +173,7 @@
   }
 
   function formatObjectCountLabel(count) {
-    return `${count} objet${count === 1 ? "" : "s"}`;
+    return `${count} Objet${count === 1 ? "" : "s"}`;
   }
 
   function formatSelectionText(count) {
@@ -180,7 +182,15 @@
   }
 
   function aggregateByType(matches) {
-    const map = new Map();
+    const map = new Map(
+      TYPE_GROUPS.map((group) => [
+        group.key,
+        {
+          meta: group,
+          items: new Map(),
+        },
+      ])
+    );
     let unknownCount = 0;
     matches.forEach((obj) => {
       const typeValue = getPropertyValueWithFallback(obj.properties, ...TYPE_PROPS);
@@ -191,23 +201,59 @@
       }
       const elementValue =
         getPropertyValueWithFallback(obj.properties, ...ELEMENT_PROPS) || ELEMENT_FALLBACK;
-      const existingGroup = map.get(group.key) || { meta: group, items: new Map() };
-      const existingItem = existingGroup.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
-      existingItem.count += 1;
-      if (group.metric) {
-        const metricValue = getPropertyValueWithFallback(obj.properties, ...(group.metric.propNames || []));
-        existingItem.total += toNumericValue(metricValue);
+      const grouped = map.get(group.key);
+
+      if (group.key === "SURFACIQUE") {
+        const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0, total: 0 };
+        existingItem.count += 1;
+        existingItem.total += toNumericValue(getSurfaceHorizontaleValue(obj.properties));
+        grouped.items.set(elementValue, existingItem);
+        return;
       }
-      existingGroup.items.set(elementValue, existingItem);
-      map.set(group.key, existingGroup);
+
+      if (group.key === "LINÉAIRE") {
+        const typeDetail = getPropertyValue(obj.properties, PROPERTY_SET, LINE_TYPE_PROP) || "Type non spécifié";
+        const key = `${elementValue}__${typeDetail}`;
+        const existingItem = grouped.items.get(key) || { element: elementValue, type: typeDetail, total: 0 };
+        const metricValue = getPropertyValueWithFallback(obj.properties, LENGTH_PROP);
+        existingItem.total += toNumericValue(metricValue);
+        grouped.items.set(key, existingItem);
+        return;
+      }
+
+      if (group.key === "PONCTUEL") {
+        const existingItem = grouped.items.get(elementValue) || { element: elementValue, count: 0 };
+        existingItem.count += 1;
+        grouped.items.set(elementValue, existingItem);
+      }
     });
 
-    const groups = TYPE_GROUPS.filter((g) => map.has(g.key)).map((g) => {
-      const group = map.get(g.key);
-      return { meta: group.meta, items: Array.from(group.items.values()) };
-    });
+    const groups = TYPE_GROUPS.filter((g) => map.has(g.key))
+      .map((g) => {
+        const group = map.get(g.key);
+        const items = Array.from(group.items.values());
+        if (!items.length) return undefined;
+        return { meta: group.meta, items };
+      })
+      .filter(Boolean);
 
     return { groups, unknownCount };
+  }
+
+  function getSurfaceHorizontaleValue(propertySets) {
+    if (!propertySets) return undefined;
+
+    const emptyPset = propertySets.find((pset) => equalsIgnoreCase(pset?.name, "") && Array.isArray(pset.properties));
+    const emptySurface = emptyPset?.properties?.find((p) => equalsIgnoreCase(p.name, SURFACE_HORIZONTAL_PROP));
+    if (emptySurface) return emptySurface.value;
+
+    for (const pset of propertySets) {
+      if (!pset?.properties) continue;
+      const prop = pset.properties.find((p) => equalsIgnoreCase(p.name, SURFACE_HORIZONTAL_PROP));
+      if (prop) return prop.value;
+    }
+
+    return getPropertyValueWithFallback(propertySets, SURFACE_PROP);
   }
 
   function buildValueCatalog(objects) {
@@ -389,14 +435,30 @@
       return;
     }
 
+    const addSectionTitle = (text) => {
+      const titleLi = document.createElement("li");
+      titleLi.classList.add("summary-section-title");
+      titleLi.innerHTML = `<span class="summary-item-text">${text}</span>`;
+      selectors.summary.appendChild(titleLi);
+    };
+
     groups.forEach((group) => {
+      addSectionTitle(group.meta.label);
+
       group.items.forEach((item) => {
         const li = document.createElement("li");
-        const countLabel = formatObjectCountLabel(item.count);
-        const metricText = group.meta.metric
-          ? ` – ${group.meta.metric.label} : ${formatNumber(item.total)} ${group.meta.metric.unit}`
-          : "";
-        li.innerHTML = `<span class="summary-item-text">${countLabel} - ${item.element}${metricText}</span>`;
+        let text = "";
+
+        if (group.meta.key === "SURFACIQUE") {
+          text = `${formatObjectCountLabel(item.count)} - ${item.element} \u2013 Surface totale : ${formatNumber(item.total)}`;
+        } else if (group.meta.key === "LINÉAIRE") {
+          const typeLabel = item.type ? ` \u2013 ${item.type}` : "";
+          text = `${item.element}${typeLabel} - Longueur totale : ${formatNumber(item.total)}`;
+        } else if (group.meta.key === "PONCTUEL") {
+          text = `${formatObjectCountLabel(item.count)} - ${item.element}`;
+        }
+
+        li.innerHTML = `<span class="summary-item-text">${text}</span>`;
         selectors.summary.appendChild(li);
       });
     });
