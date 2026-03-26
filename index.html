@@ -41,19 +41,6 @@
       background: var(--surface);
     }
 
-    header {
-      background: var(--primary);
-      color: white;
-      padding: 16px 22px;
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: 0.2px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
-
     .app-layout {
       padding: 18px 18px 24px;
       max-width: 1180px;
@@ -71,6 +58,18 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
       border: 1px solid var(--border);
       margin-bottom: 14px;
+    }
+
+    .card-title {
+      background: var(--primary);
+      color: white;
+      margin: -18px -18px 16px;
+      padding: 14px 18px;
+      border-radius: 12px 12px 0 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     }
 
     .grid {
@@ -278,10 +277,10 @@
   </style>
 </head>
 <body>
-  <header>Recherche d'objet 3D par attributs</header>
   <div class="app-layout">
     <main>
       <section class="card">
+        <div class="card-title">Recherche d'objet 3D par attributs</div>
         <div class="grid">
           <div>
             <label for="nomProjet">Nom projet</label>
@@ -337,7 +336,7 @@
       </section>
 
       <section class="card results">
-        <h3>Résultats</h3>
+        <div class="card-title">Résultats</div>
         <div id="resultCount">Aucun résultat pour le moment.</div>
         <ul id="summary" class="summary-list"></ul>
       </section>
