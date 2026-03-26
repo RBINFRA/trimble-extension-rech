@@ -41,8 +41,8 @@
   const TYPE_PROP_UNICODE_APOSTROPHE = "TYPE D\u2019OBJET 3D";
   const TYPE_PROPS = [TYPE_PROP_STRAIGHT, TYPE_PROP_UNICODE_APOSTROPHE];
   const ELEMENT_PROPS = ["ELEMENT", "ELEMENTS", "ÉLÉMENT", "ÉLÉMENTS"];
-  const LINE_TYPE_PROP = "TYPE";
-  const LINE_TYPE_FALLBACK = "Type non spécifié";
+  const OBJECT_TYPE_PROP = "TYPE";
+  const TYPE_FALLBACK = "Type non spécifié";
   const LINEAR_KEY_SEPARATOR = "::";
   const ELEMENT_FALLBACK = "Élément non spécifié";
   const UNKNOWN_TYPE_LABEL = "INCONNUS";
@@ -184,7 +184,7 @@
     return `${formatObjectCountLabel(count)} ${adjective}`;
   }
 
-  function buildLinearKey(element, type) {
+  function buildElementTypeKey(element, type) {
     return `${element}${LINEAR_KEY_SEPARATOR}${type}`;
   }
 
@@ -209,35 +209,46 @@
       if (group.key === "SURFACIQUE") {
         const existingItem =
           grouped.items.get(elementValue) || { element: elementValue, count: 0, total: 0, objects: [] };
-        existingItem.count += 1;
-        existingItem.total += toNumericValue(getSurfaceHorizontaleValue(obj.properties));
-        existingItem.objects.push(obj);
-        grouped.items.set(elementValue, existingItem);
+        const updatedItem = {
+          element: elementValue,
+          count: existingItem.count + 1,
+          total: existingItem.total + toNumericValue(getSurfaceHorizontaleValue(obj.properties)),
+          objects: [...existingItem.objects, obj],
+        };
+        grouped.items.set(elementValue, updatedItem);
         map.set(group.key, grouped);
         return;
       }
 
       if (group.key === "LINÉAIRE") {
-        const typeDetail = getPropertyValueWithFallback(obj.properties, LINE_TYPE_PROP) || LINE_TYPE_FALLBACK;
-        const linearKey = buildLinearKey(elementValue, typeDetail);
+        const typeDetail = getPropertyValueWithFallback(obj.properties, OBJECT_TYPE_PROP) || TYPE_FALLBACK;
+        const linearKey = buildElementTypeKey(elementValue, typeDetail);
         const existingItem =
           grouped.items.get(linearKey) || { element: elementValue, type: typeDetail, total: 0, objects: [] };
         const metricValue = getPropertyValueWithFallback(obj.properties, LENGTH_PROP);
-        existingItem.total += toNumericValue(metricValue);
-        existingItem.objects.push(obj);
-        grouped.items.set(linearKey, existingItem);
+        const updatedItem = {
+          element: elementValue,
+          type: typeDetail,
+          total: existingItem.total + toNumericValue(metricValue),
+          objects: [...existingItem.objects, obj],
+        };
+        grouped.items.set(linearKey, updatedItem);
         map.set(group.key, grouped);
         return;
       }
 
       if (group.key === "PONCTUEL") {
-        const typeDetail = getPropertyValueWithFallback(obj.properties, LINE_TYPE_PROP) || LINE_TYPE_FALLBACK;
-        const punctualKey = buildLinearKey(elementValue, typeDetail);
+        const typeDetail = getPropertyValueWithFallback(obj.properties, OBJECT_TYPE_PROP) || TYPE_FALLBACK;
+        const punctualKey = buildElementTypeKey(elementValue, typeDetail);
         const existingItem =
           grouped.items.get(punctualKey) || { element: elementValue, type: typeDetail, count: 0, objects: [] };
-        existingItem.count += 1;
-        existingItem.objects.push(obj);
-        grouped.items.set(punctualKey, existingItem);
+        const updatedItem = {
+          element: elementValue,
+          type: typeDetail,
+          count: existingItem.count + 1,
+          objects: [...existingItem.objects, obj],
+        };
+        grouped.items.set(punctualKey, updatedItem);
         map.set(group.key, grouped);
       }
     });
@@ -477,7 +488,8 @@
             setStatus("Éléments sélectionnés et zoomés.");
           } catch (err) {
             console.error(err);
-            setError("Impossible de zoomer sur ces éléments.");
+            const detail = err?.message ? ` Détails : ${err.message}` : "";
+            setError(`Impossible de zoomer sur ces éléments. Vérifiez la connexion au viewer.${detail}`);
             setStatus("");
           }
         });
